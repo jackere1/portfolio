@@ -1,0 +1,31 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 
+     THE PHILOSOPHY:
+     1. Background: Deep "Void" Navy. Represents the depth of backend knowledge.
+     2. Shape: A geometric 'e'.
+     3. The Accent: The middle floating block represents the "Cursor" or the current line of code.
+  -->
+
+  <!-- The Background: A perfectly rounded app-icon shape -->
+  <rect x="0" y="0" width="512" height="512" rx="120" fill="#0B1121"/>
+
+  <!-- The "Cold" Gradient -->
+  <defs>
+    <linearGradient id="coldGradient" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22D3EE" /> <!-- Cyan (Ice) -->
+      <stop offset="1" stop-color="#3B82F6" /> <!-- Blue (Logic) -->
+    </linearGradient>
+  </defs>
+
+  <!-- The "Structure": Top and Bottom of the 'e' -->
+  <!-- This represents the 'container' of your code -->
+  <path 
+    d="M360 140 H170 C153.431 140 140 153.431 140 170 V342 C140 358.569 153.431 372 170 372 H360 C371.046 372 380 363.046 380 352 V312 C380 300.954 371.046 292 360 292 H220 V220 H360 C371.046 220 380 211.046 380 200 V160 C380 148.954 371.046 140 360 140 Z" 
+    fill="url(#coldGradient)"
+  />
+
+  <!-- The "Cursor": The floating middle bar -->
+  <!-- This represents the active work, the input, the "Guru" at work -->
+  <rect x="220" y="245" width="140" height="22" rx="4" fill="#FFFFFF" fill-opacity="0.9"/>
+  
+</svg>
