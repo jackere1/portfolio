@@ -5,20 +5,39 @@ import { cn } from "@/lib/utils"
 
 const skillCategories = [
   {
-    title: "Backend & Systems",
-    skills: ["Go", "Node.js", "Python", "PostgreSQL", "Redis", "gRPC", "REST APIs", "GraphQL"],
+    title: "Web",
+    skills: ["React (Vite)", "Next.js", "Angular", "A-Frame", "Three.js", "JavaScript", "TypeScript"],
   },
   {
-    title: "Frontend & Mobile",
-    skills: ["React", "Next.js", "TypeScript", "React Native", "Tailwind CSS"],
+    title: "Backend",
+    skills: ["Node.js", "NestJS", "Fastify", "Express", "Go (Gin)", "PHP (Symfony)"],
   },
   {
-    title: "DevOps & Infrastructure",
-    skills: ["Docker", "Kubernetes", "CI/CD", "AWS", "Linux", "Nginx"],
+    title: "Data & Storage",
+    skills: ["PostgreSQL", "MongoDB", "DynamoDB", "S3", "SQL"],
+  },
+  {
+    title: "Infra & DevOps",
+    skills: ["Nginx", "Redis", "Kafka", "GitHub Actions", "GitLab CI/CD", "Nx Monorepo", "Docker Registry"],
+  },
+  {
+    title: "Cloud & Observability",
+    skills: [
+      "AWS Lambda",
+      "API Gateway",
+      "CloudFront",
+      "DigitalOcean Droplets",
+      "Spaces",
+      "Prometheus",
+      "Grafana",
+      "Loki",
+      "OpenTelemetry",
+      "Jaeger",
+    ],
   },
   {
     title: "Specialized",
-    skills: ["Payment Systems", "WebRTC", "SIP Protocol", "High Concurrency", "System Design"],
+    skills: ["Payment Systems", "RTC", "AR/VR", "AI/ML", "System Design"],
   },
 ]
 

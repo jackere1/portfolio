@@ -22,7 +22,7 @@ const projects = [
     title: "TOKI - RTC Platform",
     description:
       "Real-time communication platform with VOIP capabilities, SIP protocol integration, and WebRTC-based audio/video calling. Handles thousands of concurrent connections with low latency.",
-    technologies: ["WebRTC", "SIP", "Node.js", "React Native", "Redis"],
+    technologies: ["WebRTC", "SIP", "Kamailio", "FreeSWITCH", "Redis"],
     link: null,
   },
   {
