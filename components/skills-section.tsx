@@ -7,22 +7,18 @@ const skillCategories = [
   {
     title: "Backend & Systems",
     skills: ["Go", "Node.js", "Python", "PostgreSQL", "Redis", "gRPC", "REST APIs", "GraphQL"],
-    icon: "⚡",
   },
   {
     title: "Frontend & Mobile",
     skills: ["React", "Next.js", "TypeScript", "React Native", "Tailwind CSS"],
-    icon: "🎨",
   },
   {
     title: "DevOps & Infrastructure",
     skills: ["Docker", "Kubernetes", "CI/CD", "AWS", "Linux", "Nginx"],
-    icon: "🚀",
   },
   {
     title: "Specialized",
-    skills: ["Payment Systems", "WebRTC", "SIP Protocol", "High Concurrency", "System Design", "AI/LLM"],
-    icon: "🔧",
+    skills: ["Payment Systems", "WebRTC", "SIP Protocol", "High Concurrency", "System Design"],
   },
 ]
 
@@ -39,10 +35,7 @@ function SkillCategory({ category, index }: { category: (typeof skillCategories)
       style={{ transitionDelay: `${index * 150}ms` }}
     >
       <div className="gradient-border p-5 rounded-xl hover:scale-[1.02] transition-transform duration-300">
-        <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-          <span className="text-lg">{category.icon}</span>
-          {category.title}
-        </h3>
+        <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">{category.title}</h3>
         <ul className="flex flex-wrap gap-2">
           {category.skills.map((skill, skillIndex) => (
             <li

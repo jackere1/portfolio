@@ -3,7 +3,7 @@
 import { Github, Linkedin, Mail, ExternalLink } from "lucide-react"
 import { useEffect, useState } from "react"
 
-const titles = ["Software Engineer", "Backend Architect", "Payment Systems Expert", "Telecom Developer", "AI Builder"]
+const titles = ["Software Engineer", "Backend Architect", "Payment Systems Expert", "Telecom Developer"]
 
 export function HeroSection() {
   const [titleIndex, setTitleIndex] = useState(0)

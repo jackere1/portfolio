@@ -1,18 +1,15 @@
 "use client"
 
-import { ExternalLink, Github } from "lucide-react"
+import { ExternalLink } from "lucide-react"
 import { useInView } from "@/hooks/use-in-view"
 import { cn } from "@/lib/utils"
 
 const projects = [
   {
     title: "Tuslay.mn",
-    description:
-      "Agentic AI platform enabling intelligent automation and conversational AI experiences. Built with modern LLM architectures and agent-based workflows for complex task execution.",
-    technologies: ["AI/ML", "LangChain", "Next.js", "Python", "PostgreSQL"],
+    description: "Platform focused on workflow automation and operational tooling.",
+    technologies: ["Next.js", "Python", "PostgreSQL"],
     link: "https://tuslay.mn",
-    github: null,
-    image: "/ai-agent-platform-dashboard-with-neural-network-vi.jpg",
   },
   {
     title: "ONDO Billing System",
@@ -20,8 +17,6 @@ const projects = [
       "Enterprise-grade billing and payment processing system handling high-volume transactions with real-time reconciliation, multiple payment gateway integrations, and comprehensive reporting.",
     technologies: ["Go", "PostgreSQL", "Redis", "gRPC", "Kubernetes"],
     link: null,
-    github: null,
-    image: "/modern-billing-dashboard-with-charts-and-payment-f.jpg",
   },
   {
     title: "TOKI - RTC Platform",
@@ -29,8 +24,6 @@ const projects = [
       "Real-time communication platform with VOIP capabilities, SIP protocol integration, and WebRTC-based audio/video calling. Handles thousands of concurrent connections with low latency.",
     technologies: ["WebRTC", "SIP", "Node.js", "React Native", "Redis"],
     link: null,
-    github: null,
-    image: "/video-calling-app-interface-with-connected-users.jpg",
   },
   {
     title: "IkhGobiEnergy CMMS",
@@ -38,8 +31,6 @@ const projects = [
       "Computerized Maintenance Management System for mining operations. Tracks equipment lifecycle, preventive maintenance scheduling, work orders, and inventory management.",
     technologies: ["React", "Node.js", "PostgreSQL", "Redis", "Docker"],
     link: null,
-    github: null,
-    image: "/industrial-equipment-maintenance-dashboard-mining.jpg",
   },
   {
     title: "ProFund.mn",
@@ -47,8 +38,6 @@ const projects = [
       "Crowdfunding platform connecting entrepreneurs with investors. Features secure payment processing, project management tools, and real-time funding progress tracking.",
     technologies: ["Next.js", "TypeScript", "PostgreSQL", "Stripe"],
     link: "https://profund.mn",
-    github: null,
-    image: "/crowdfunding-platform-with-project-cards-and-progr.jpg",
   },
 ]
 
@@ -59,7 +48,7 @@ function ProjectCard({ project, index }: { project: (typeof projects)[0]; index:
     <li ref={ref} className="mb-12" style={{ transitionDelay: `${index * 100}ms` }}>
       <div
         className={cn(
-          "group relative grid gap-4 pb-1 transition-all duration-700 sm:grid-cols-8 sm:gap-8 md:gap-4",
+          "group relative grid gap-4 pb-1 transition-all duration-700",
           "lg:hover:!opacity-100 lg:group-hover/list:opacity-50 perspective-card",
           isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12",
         )}
@@ -71,7 +60,7 @@ function ProjectCard({ project, index }: { project: (typeof projects)[0]; index:
           <div className="absolute inset-0 rounded-md bg-gradient-to-r from-primary/10 via-transparent to-primary/10 blur-xl" />
         </div>
 
-        <div className="z-10 sm:order-2 sm:col-span-6 perspective-card-inner">
+        <div className="z-10 perspective-card-inner">
           <h3>
             <a
               href={project.link || "#"}
@@ -87,17 +76,6 @@ function ProjectCard({ project, index }: { project: (typeof projects)[0]; index:
                 )}
               </span>
             </a>
-            {project.github && (
-              <a
-                href={project.github}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ml-2 text-muted-foreground hover:text-foreground transition-colors duration-300"
-                aria-label="GitHub repository"
-              >
-                <Github className="inline-block h-4 w-4" />
-              </a>
-            )}
           </h3>
 
           <p className="mt-2 text-sm leading-normal text-muted-foreground">{project.description}</p>
@@ -111,17 +89,6 @@ function ProjectCard({ project, index }: { project: (typeof projects)[0]; index:
               </li>
             ))}
           </ul>
-        </div>
-
-        {/* Image with hover effects */}
-        <div className="z-10 sm:order-1 sm:col-span-2 overflow-hidden rounded-lg">
-          <img
-            src={project.image || "/placeholder.svg"}
-            alt={`${project.title} preview`}
-            className="rounded border-2 border-border/50 transition-all duration-500 group-hover:border-primary/50 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-primary/10"
-            width={200}
-            height={100}
-          />
         </div>
       </div>
     </li>

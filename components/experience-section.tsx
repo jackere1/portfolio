@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
 
 const experiences = [
   {
-    period: "2025 — Present",
+    period: "2025 - Present",
     title: "Software Engineer",
     company: "ONDO LLC",
     description:
@@ -15,7 +15,7 @@ const experiences = [
     link: "#",
   },
   {
-    period: "2024 — 2025",
+    period: "2024 - 2025",
     title: "Software Engineer",
     company: "Unitel Group",
     description:
@@ -33,7 +33,7 @@ const experiences = [
     link: "#",
   },
   {
-    period: "2023 — 2024",
+    period: "2023 - 2024",
     title: "Full Stack Developer",
     company: "Chinggis Systems LLC",
     description:
@@ -63,6 +63,7 @@ const experiences = [
 
 function ExperienceCard({ exp, index }: { exp: (typeof experiences)[0]; index: number }) {
   const { ref, isInView } = useInView({ threshold: 0.2 })
+  const hasLink = exp.link && exp.link !== "#"
 
   return (
     <li ref={ref} className="mb-12" style={{ transitionDelay: `${index * 100}ms` }}>
@@ -90,16 +91,16 @@ function ExperienceCard({ exp, index }: { exp: (typeof experiences)[0]; index: n
             <div>
               <a
                 href={exp.link}
-                target="_blank"
-                rel="noopener noreferrer"
+                target={hasLink ? "_blank" : undefined}
+                rel={hasLink ? "noopener noreferrer" : undefined}
                 className="inline-flex items-baseline font-medium leading-tight text-foreground hover:text-primary focus-visible:text-primary group/link transition-colors duration-300"
               >
                 <span className="absolute -inset-x-4 -inset-y-2.5 hidden rounded md:-inset-x-6 md:-inset-y-4 lg:block" />
                 <span>
-                  {exp.title} ·{" "}
+                  {exp.title} at{" "}
                   <span className="inline-block">
                     {exp.company}
-                    {exp.link !== "#" && (
+                    {hasLink && (
                       <ExternalLink className="inline-block h-4 w-4 shrink-0 transition-transform duration-300 group-hover/link:-translate-y-1 group-hover/link:translate-x-1 group-focus-visible/link:-translate-y-1 group-focus-visible/link:translate-x-1 motion-reduce:transition-none ml-1" />
                     )}
                   </span>

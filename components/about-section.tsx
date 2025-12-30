@@ -34,17 +34,17 @@ export function AboutSection() {
           Currently, I'm focused on building enterprise-grade billing systems at{" "}
           <a href="#" className="text-primary hover:underline font-medium inline-flex items-center gap-1 group">
             ONDO LLC
-            <span className="inline-block transition-transform duration-300 group-hover:translate-x-1">→</span>
+            <span className="inline-block transition-transform duration-300 group-hover:translate-x-1">-&gt;</span>
           </a>
           , where I architect solutions that handle complex payment workflows and transaction processing at scale.
         </p>
 
         <p className="tilt-hover p-4 -m-4 rounded-lg transition-all duration-300 hover:bg-card/50">
-          In the past, I've had the opportunity to work across diverse domains — from{" "}
+          In the past, I've had the opportunity to work across diverse domains - from{" "}
           <span className="text-foreground font-medium">telecommunications</span> at Unitel Group building VOIP and
           SIP/RTC communication systems, to creating{" "}
           <span className="text-foreground font-medium">crowdfunding platforms</span> and{" "}
-          <span className="text-foreground font-medium">agentic AI solutions</span>. I also contributed to CMMS
+          <span className="text-foreground font-medium">automation solutions</span>. I also contributed to CMMS
           development for <span className="text-foreground font-medium">IkhGobiEnergy LLC</span>, a major local mining
           corporation.
         </p>

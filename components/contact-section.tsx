@@ -66,7 +66,7 @@ export function ContactSection() {
             <span className="relative flex items-center gap-2">
               <Mail className="h-4 w-4" />
               Get in Touch
-              <span className="group-hover:translate-x-1 transition-transform duration-300">→</span>
+              <span className="group-hover:translate-x-1 transition-transform duration-300">-&gt;</span>
             </span>
           </a>
         </div>
@@ -104,7 +104,7 @@ export function ContactSection() {
           .
         </p> */}
         <p className="mt-2 text-md text-muted-foreground">
-          © {new Date().getFullYear()} Enkhbold Nyamdorj. All rights reserved.
+          (c) {new Date().getFullYear()} Enkhbold Nyamdorj. All rights reserved.
         </p>
       </footer>
     </section>
