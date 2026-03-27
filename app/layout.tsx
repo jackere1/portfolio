@@ -11,7 +11,14 @@ export const metadata: Metadata = {
   title: "Enkhbold Nyamdorj | Software Engineer",
   description:
     "Software Engineer specializing in payment systems, high-concurrency architecture, and real-time communications. 4+ years of experience building scalable applications.",
-  keywords: ["Software Engineer", "Backend Developer", "Payment Systems", "SIP", "WebRTC", "Mongolia"],
+  keywords: [
+    "Software Engineer",
+    "Backend Developer",
+    "Payment Systems",
+    "SIP",
+    "WebRTC",
+    "Mongolia",
+  ],
   authors: [{ name: "Enkhbold Nyamdorj" }],
   openGraph: {
     title: "Enkhbold Nyamdorj | Software Engineer",
@@ -39,7 +46,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`font-sans antialiased`}>
+      <body className="font-sans antialiased">
         {children}
         <Analytics />
       </body>
