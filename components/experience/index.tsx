@@ -12,15 +12,15 @@ import { EnergyRings } from "../world/energy-rings"
 import { GridFloor } from "../world/grid-floor"
 import { GpuParticleField } from "../world/particle-field-gpu"
 import { FloatingMonoliths } from "../world/floating-monoliths"
-import { HeroPanel } from "../sections/hero-panel"
-import { AboutPanel } from "../sections/about-panel"
-import { ExperiencePanel } from "../sections/experience-panel"
-import { ProjectsPanel } from "../sections/projects-panel"
-import { SkillsPanel } from "../sections/skills-panel"
-import { ContactPanel } from "../sections/contact-panel"
+import { DataConduits } from "../world/data-conduits"
+import { Seam } from "../world/seam"
+import { Rooms } from "../sections/rooms"
 import { NavOverlay } from "../ui/nav-overlay"
 import { ScrollHint } from "../ui/scroll-hint"
 import { LoadingScreen } from "../ui/loading-screen"
+import { HeldLine } from "../ui/held-line"
+import { Colophon } from "../ui/colophon"
+import { Cursor } from "../ui/cursor"
 import { useScrollStore } from "@/hooks/use-scroll-store"
 import { useGpuTier } from "@/hooks/use-gpu-tier"
 
@@ -36,18 +36,15 @@ function Scene() {
       <MachineCore />
       <EnergyRings />
       <GridFloor />
+      <Seam />
+      <DataConduits />
       {quality.particleCount > 0 && (
         <GpuParticleField count={quality.particleCount} />
       )}
       <FloatingMonoliths />
 
-      {/* HTML content panels anchored in 3D space */}
-      <HeroPanel />
-      <AboutPanel />
-      <ExperiencePanel />
-      <ProjectsPanel />
-      <SkillsPanel />
-      <ContactPanel />
+      {/* The seven rooms, anchored in 3D space */}
+      <Rooms />
 
       {/* Post-processing effects */}
       <PostProcessing quality={quality} />
@@ -124,9 +121,12 @@ export function Experience() {
         </Canvas>
       </div>
 
-      {/* 2D overlays on top of the canvas */}
+      {/* 2D overlays on top of the canvas (DOM siblings — the camera can't touch them) */}
+      <HeldLine />
       <NavOverlay />
       <ScrollHint />
+      <Cursor />
+      <Colophon />
     </>
   )
 }

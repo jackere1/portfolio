@@ -2,7 +2,6 @@ import { useRef } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import { useScrollStore, getSectionProgress } from "@/hooks/use-scroll-store"
-import { experiences } from "@/lib/data"
 
 interface MonolithProps {
   position: [number, number, number]
@@ -27,10 +26,10 @@ function Monolith({ position, scale, color, index }: MonolithProps) {
     // Subtle rotation
     meshRef.current.rotation.y = Math.sin(time * 0.2 + index) * 0.1
 
-    // Fade in based on section progress
-    const expProgress = getSectionProgress(progress, "experience")
+    // Fade in around the boundary crossing
+    const ringProgress = getSectionProgress(progress, "boundary")
     const material = meshRef.current.material as THREE.MeshStandardMaterial
-    material.opacity = Math.min(1, expProgress * 2)
+    material.opacity = Math.min(1, ringProgress * 2)
 
     if (edgeRef.current) {
       edgeRef.current.position.copy(meshRef.current.position)
@@ -68,13 +67,13 @@ function AboutMonolith() {
   useFrame((state) => {
     if (!meshRef.current) return
     const time = state.clock.elapsedTime
-    const aboutProgress = getSectionProgress(progress, "about")
+    const gateProgress = getSectionProgress(progress, "gate")
 
     meshRef.current.position.y = 3 + Math.sin(time * 0.4) * 0.2
     meshRef.current.rotation.y = Math.sin(time * 0.15) * 0.05
 
     const material = meshRef.current.material as THREE.MeshStandardMaterial
-    material.opacity = Math.min(0.9, aboutProgress * 2)
+    material.opacity = Math.min(0.9, gateProgress * 2)
   })
 
   return (
@@ -93,10 +92,12 @@ function AboutMonolith() {
   )
 }
 
+const RING_COUNT = 8
+
 export function FloatingMonoliths() {
-  // Arrange 8 monoliths in a ring for the experience section
-  const monolithData = experiences.map((_, i) => {
-    const angle = (i / experiences.length) * Math.PI * 2
+  // A ring of monoliths around the boundary crossing.
+  const monolithData = Array.from({ length: RING_COUNT }, (_, i) => {
+    const angle = (i / RING_COUNT) * Math.PI * 2
     const radius = 5
     const y = -2
     return {

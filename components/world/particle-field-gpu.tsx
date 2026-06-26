@@ -2,6 +2,9 @@ import { useRef, useMemo, useEffect } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import { useScrollStore } from "@/hooks/use-scroll-store"
+import { useReducedMotion } from "@/hooks/use-reduced-motion"
+import { makeRng } from "@/lib/prng"
+import { regionFactor } from "@/lib/world-config"
 
 interface Props {
   count: number
@@ -10,24 +13,32 @@ interface Props {
 export function GpuParticleField({ count }: Props) {
   const pointsRef = useRef<THREE.Points>(null)
   const progress = useScrollStore((s) => s.progress)
+  const reduced = useReducedMotion()
 
-  const velocities = useMemo(() => {
+  // Seeded velocities + a fixed "lane" (angle, radius) per particle, so a
+  // particle that wraps returns to a deterministic lane instead of re-rolling.
+  const { velocities, lanes } = useMemo(() => {
+    const rng = makeRng("particles")
     const vel = new Float32Array(count * 3)
+    const lane = new Float32Array(count * 2)
     for (let i = 0; i < count; i++) {
-      vel[i * 3] = (Math.random() - 0.5) * 0.005
-      vel[i * 3 + 1] = 0.005 + Math.random() * 0.015
-      vel[i * 3 + 2] = (Math.random() - 0.5) * 0.005
+      vel[i * 3] = (rng() - 0.5) * 0.005
+      vel[i * 3 + 1] = 0.005 + rng() * 0.015
+      vel[i * 3 + 2] = (rng() - 0.5) * 0.005
+      lane[i * 2] = rng() * Math.PI * 2
+      lane[i * 2 + 1] = 1 + rng() * 12
     }
-    return vel
+    return { velocities: vel, lanes: lane }
   }, [count])
 
   const geometry = useMemo(() => {
     const geo = new THREE.BufferGeometry()
     const pos = new Float32Array(count * 3)
+    const rng = makeRng("particles-height")
     for (let i = 0; i < count; i++) {
-      const angle = Math.random() * Math.PI * 2
-      const radius = 1 + Math.random() * 12
-      const height = (Math.random() - 0.5) * 40
+      const angle = lanes[i * 2]
+      const radius = lanes[i * 2 + 1]
+      const height = (rng() - 0.5) * 40
       pos[i * 3] = Math.cos(angle) * radius
       pos[i * 3 + 1] = height
       pos[i * 3 + 2] = Math.sin(angle) * radius
@@ -36,7 +47,7 @@ export function GpuParticleField({ count }: Props) {
     attr.setUsage(THREE.DynamicDrawUsage)
     geo.setAttribute("position", attr)
     return geo
-  }, [count])
+  }, [count, lanes])
 
   useEffect(() => {
     return () => geometry.dispose()
@@ -44,7 +55,8 @@ export function GpuParticleField({ count }: Props) {
 
   useFrame(() => {
     if (!pointsRef.current) return
-    const posAttr = pointsRef.current.geometry.attributes.position as THREE.BufferAttribute
+    const posAttr = pointsRef.current.geometry.attributes
+      .position as THREE.BufferAttribute
     const arr = posAttr.array as Float32Array
 
     for (let i = 0; i < count; i++) {
@@ -52,14 +64,17 @@ export function GpuParticleField({ count }: Props) {
       const iy = i * 3 + 1
       const iz = i * 3 + 2
 
-      arr[ix] += velocities[ix]
+      // Lateral wander only above the seam (probabilistic). Below, particles
+      // fall on perfectly straight, deterministic lanes.
+      const region = reduced ? 0 : regionFactor(arr[iy])
+      arr[ix] += velocities[ix] * region
       arr[iy] += velocities[iy] * (1 + progress)
-      arr[iz] += velocities[iz]
+      arr[iz] += velocities[iz] * region
 
       if (arr[iy] > 20) {
         arr[iy] = -20
-        const angle = Math.random() * Math.PI * 2
-        const radius = 1 + Math.random() * 12
+        const angle = lanes[i * 2]
+        const radius = lanes[i * 2 + 1]
         arr[ix] = Math.cos(angle) * radius
         arr[iz] = Math.sin(angle) * radius
       }

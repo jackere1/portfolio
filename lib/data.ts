@@ -1,37 +1,9 @@
+// The facts — the truth source for the colophon. Not surface copy.
 export const personalInfo = {
   name: { first: "Enkhbold", last: "Nyamdorj" },
-  titles: [
-    "Software Engineer",
-    "Backend Architect",
-    "Payment Systems Expert",
-    "Telecom Developer",
-  ],
-  tagline:
-    "I build robust, scalable backend systems and payment architectures that handle millions of transactions with precision.",
-  stats: [
-    { value: "4+", label: "Years Exp" },
-    { value: "20+", label: "Projects" },
-    { value: "5+", label: "Industries" },
-  ],
   location: "Ulaanbaatar, Mongolia",
   email: "enkhbold@tuslay.mn",
-  socials: [
-    { href: "https://github.com/jackere1", label: "GitHub" },
-    {
-      href: "https://linkedin.com/in/enkhbold-nyamdorj",
-      label: "LinkedIn",
-    },
-    { href: "mailto:enkhbold@tuslay.mn", label: "Email" },
-    { href: "https://encold.guru", label: "Website" },
-  ],
 }
-
-export const aboutParagraphs = [
-  'I\'m a software engineer with <highlight>4+ years of experience</highlight> building robust backend systems and scalable applications. My expertise lies in designing <accent>payment and billing systems</accent>, <accent>high-concurrency architectures</accent>, and <accent>real-time communication platforms</accent>.',
-  'Currently, I\'m focused on building enterprise-grade billing systems at <link href="#">ONDO LLC</link>, where I architect solutions that handle complex payment workflows and transaction processing at scale.',
-  'In the past, I\'ve had the opportunity to work across diverse domains - from <highlight>telecommunications</highlight> at Unitel Group building VOIP and SIP/RTC communication systems, to creating <highlight>crowdfunding platforms</highlight> and <highlight>automation solutions</highlight>. I also contributed to CMMS development for <highlight>IkhGobiEnergy LLC</highlight>, a major local mining corporation.',
-  'I hold a <highlight>Bachelor\'s in Computer Science</highlight> from the National University of Mongolia, where I also served as an instructor teaching software engineering principles.',
-]
 
 export interface Experience {
   period: string

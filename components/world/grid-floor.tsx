@@ -3,6 +3,7 @@ import { useFrame, extend } from "@react-three/fiber"
 import * as THREE from "three"
 import { shaderMaterial } from "@react-three/drei"
 import { useScrollStore } from "@/hooks/use-scroll-store"
+import { useReducedMotion } from "@/hooks/use-reduced-motion"
 
 const GridFloorMaterial = shaderMaterial(
   {
@@ -75,11 +76,13 @@ declare global {
 export function GridFloor() {
   const matRef = useRef<THREE.ShaderMaterial>(null)
   const progress = useScrollStore((s) => s.progress)
+  const reduced = useReducedMotion()
 
   useFrame((state) => {
     if (!matRef.current) return
     matRef.current.uniforms.uTime.value = state.clock.elapsedTime
-    matRef.current.uniforms.uPulseSpeed.value = 1.0 + progress * 0.5
+    // Reduced motion freezes the sonar pulse to a static, crisp grid.
+    matRef.current.uniforms.uPulseSpeed.value = reduced ? 0 : 1.0 + progress * 0.5
   })
 
   return (

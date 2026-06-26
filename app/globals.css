@@ -27,8 +27,9 @@
 }
 
 @theme inline {
-  --font-sans: "Inter", "Inter Fallback";
-  --font-mono: "Geist Mono", "Geist Mono Fallback";
+  --font-sans: var(--ff-display), system-ui, sans-serif;
+  --font-prose: var(--ff-prose), ui-serif, Georgia, serif;
+  --font-mono: var(--ff-mono), ui-monospace, SFMono-Regular, monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -162,12 +163,11 @@ html {
   font-size: 0.75rem;
   font-weight: 500;
   color: oklch(0.78 0.18 75);
-  transition: all 0.3s;
+  /* Foreground — snaps on hover, no easing. */
 }
 
 .tech-tag:hover {
   background: oklch(0.78 0.18 75 / 0.2);
-  transform: scale(1.05);
 }
 
 /* ========== CRT / Terminal effect ========== */
@@ -212,7 +212,7 @@ html {
   height: 8px;
   border-radius: 50%;
   background: oklch(0.55 0.02 80 / 0.3);
-  transition: all 0.3s;
+  /* Foreground control — snaps, no easing. */
 }
 
 .nav-dot.active {
@@ -386,3 +386,201 @@ html {
 .stagger-children > *:nth-child(4) { animation-delay: 0.4s; }
 .stagger-children > *:nth-child(5) { animation-delay: 0.5s; }
 .stagger-children > *:nth-child(6) { animation-delay: 0.6s; }
+
+/* ============================================================
+   The Boundary — surface (voice) vs substrate (truth)
+   ============================================================ */
+
+/* The performing voice. Serif, literary, allowed to drift. */
+.voice {
+  font-family: var(--ff-prose), ui-serif, Georgia, serif;
+  color: oklch(0.78 0.02 80);
+  line-height: 1.55;
+  font-size: 0.95rem;
+  letter-spacing: 0.005em;
+}
+
+/* The aphorism — the lead line, set large. */
+.lead {
+  font-family: var(--ff-prose), ui-serif, Georgia, serif;
+  color: oklch(0.92 0.01 80);
+  font-weight: 400;
+  font-size: clamp(1.3rem, 1.1rem + 1.1vw, 2.05rem);
+  line-height: 1.18;
+  letter-spacing: -0.012em;
+  text-wrap: balance;
+}
+
+/* The marker eyebrow — a depth coordinate, never a section title. */
+.room-marker {
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-size: 0.625rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: oklch(0.78 0.18 75 / 0.55);
+}
+
+/* The substrate — the part not permitted to lie. Hard edges, fixed width,
+   exact values, no glow, no radius. Crossing into it is crossing the boundary. */
+.substrate {
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  border: 1px solid oklch(0.78 0.18 75 / 0.28);
+  border-radius: 0;
+  background: oklch(0.04 0.01 260 / 0.6);
+  color: oklch(0.86 0.01 80);
+  font-size: 0.74rem;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Foreground reveal: snaps open, no easing. */
+.snap {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* The reveal affordance — a hard, quiet control. */
+.reveal-control {
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-size: 0.625rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: oklch(0.78 0.18 75 / 0.75);
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.reveal-control:hover { color: oklch(0.82 0.18 75); }
+.reveal-control:focus-visible {
+  outline: 1px solid oklch(0.78 0.18 75 / 0.7);
+  outline-offset: 3px;
+}
+
+/* The held line — the one element that never moves. Cool blue, the boundary. */
+.held-line {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 50vh;
+  height: 1px;
+  background: oklch(0.62 0.16 250 / 0.5);
+  z-index: 60;
+  pointer-events: none;
+}
+.held-line-label {
+  position: fixed;
+  top: calc(50vh - 1.1rem);
+  left: 1.25rem;
+  z-index: 61;
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-size: 0.625rem;
+  letter-spacing: 0.18em;
+  color: oklch(0.62 0.16 250 / 0.75);
+  pointer-events: none;
+}
+.held-line-marker {
+  position: fixed;
+  top: calc(50vh - 0.72rem);
+  right: 1.25rem;
+  z-index: 61;
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-size: 0.85rem;
+  line-height: 1;
+  color: oklch(0.62 0.16 250 / 0.85);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.held-line-marker:hover { color: oklch(0.7 0.16 250); }
+.held-line-marker:focus-visible {
+  outline: 1px solid oklch(0.62 0.16 250 / 0.8);
+  outline-offset: 4px;
+}
+
+/* The colophon — flat truth. No amber, no glow, no radius. */
+.colophon {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: oklch(0.045 0.012 260);
+  color: oklch(0.86 0.01 80);
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ============================================================
+   Mobile — the boundary, carried by CSS only
+   ============================================================ */
+
+/* Two regions split at the held line: drift above, locked below. */
+.boundary-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background: oklch(0.06 0.02 260);
+}
+.boundary-region {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background-image: linear-gradient(
+      oklch(0.78 0.18 75 / 0.1) 1px,
+      transparent 1px
+    ),
+    linear-gradient(90deg, oklch(0.78 0.18 75 / 0.1) 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+/* The locked region reads cooler/crisper than the drifting one above it. */
+.boundary-locked {
+  background-image: linear-gradient(
+      oklch(0.62 0.16 250 / 0.12) 1px,
+      transparent 1px
+    ),
+    linear-gradient(90deg, oklch(0.62 0.16 250 / 0.12) 1px, transparent 1px);
+}
+/* Above the line: the probabilistic region — drifts (bounded, clamped). */
+.boundary-drift {
+  top: 0;
+  height: 50vh;
+  animation: grid-drift 9s ease-in-out infinite alternate;
+}
+/* Below the line: the deterministic region — locked, crisp, still. */
+.boundary-locked {
+  top: 50vh;
+  bottom: 0;
+}
+@keyframes grid-drift {
+  0% { background-position: 0 0; transform: skewX(0deg); }
+  100% { background-position: 6px 3px; transform: skewX(0.5deg); }
+}
+
+/* Native disclosure as the surface→proof reveal on mobile. */
+.room-details > summary {
+  list-style: none;
+  display: block; /* removes the default list-item disclosure marker */
+  cursor: pointer;
+}
+.room-details > summary::-webkit-details-marker,
+.room-details > summary::marker {
+  display: none;
+}
+
+/* ============================================================
+   Reduced motion — freeze the drift. Order wins.
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

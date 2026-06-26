@@ -7,9 +7,11 @@ import {
   SECTION_RANGES,
   type SectionName,
 } from "@/hooks/use-scroll-store"
+import { useReducedMotion } from "@/hooks/use-reduced-motion"
 
 export function CameraRig() {
   const { camera } = useThree()
+  const reduced = useReducedMotion()
   const mouseRef = useRef({ x: 0, y: 0 })
   const setVelocity = useScrollStore((s) => s.setVelocity)
   const setActiveSection = useScrollStore((s) => s.setActiveSection)
@@ -17,19 +19,13 @@ export function CameraRig() {
   const hasLoaded = useRef(false)
   const prevProgress = useRef(0)
 
-  // Track mouse for parallax
+  // Track mouse for parallax — disabled under reduced motion so the held line
+  // and the locked region stay perfectly still.
   useFrame((state) => {
-    const pointer = state.pointer
-    mouseRef.current.x = THREE.MathUtils.lerp(
-      mouseRef.current.x,
-      pointer.x * 0.3,
-      0.05
-    )
-    mouseRef.current.y = THREE.MathUtils.lerp(
-      mouseRef.current.y,
-      pointer.y * 0.2,
-      0.05
-    )
+    const targetX = reduced ? 0 : state.pointer.x * 0.3
+    const targetY = reduced ? 0 : state.pointer.y * 0.2
+    mouseRef.current.x = THREE.MathUtils.lerp(mouseRef.current.x, targetX, 0.05)
+    mouseRef.current.y = THREE.MathUtils.lerp(mouseRef.current.y, targetY, 0.05)
   })
 
   useFrame(() => {
@@ -47,7 +43,7 @@ export function CameraRig() {
         break
       }
     }
-    if (progress >= 0.9) setActiveSection("contact")
+    if (progress >= 0.91) setActiveSection("place")
 
     // Mark as loaded after first frame
     if (!hasLoaded.current) {

@@ -7,46 +7,53 @@ export interface CameraKeyframe {
 }
 
 /**
- * Camera keyframes for each section.
- * Positions define the camera path as it descends through the machine room.
- * Y-axis is the primary descent axis.
+ * Camera keyframes, one per room, descending through the field.
+ * Y is the primary descent axis. The seam sits at world y = SEAM_Y (-8); the
+ * Boundary keyframe (index 1) places the camera AT the seam and looks straight
+ * at it, so the world seam crosses the screen-fixed held line exactly there.
  */
 export const CAMERA_KEYFRAMES: CameraKeyframe[] = [
-  // Hero: Looking down into the shaft from above
+  // Gate: high above, looking down the shaft — the drift region.
   {
-    position: new THREE.Vector3(0, 12, 8),
-    lookAt: new THREE.Vector3(0, 0, 0),
-    fov: 60,
+    position: new THREE.Vector3(0, 9, 9),
+    lookAt: new THREE.Vector3(0, 1, 0),
+    fov: 62,
   },
-  // About: Descended, facing the monolith
+  // Boundary: AT the seam (y = -8). The crossing.
   {
-    position: new THREE.Vector3(4, 4, 6),
-    lookAt: new THREE.Vector3(0, 3, 0),
-    fov: 55,
+    position: new THREE.Vector3(3.5, -8, 7),
+    lookAt: new THREE.Vector3(0, -8, 0),
+    fov: 56,
   },
-  // Experience: Mid-level, orbiting the ring of monoliths
+  // Language: into the locked region.
   {
-    position: new THREE.Vector3(6, -2, 4),
-    lookAt: new THREE.Vector3(0, -2, 0),
-    fov: 55,
+    position: new THREE.Vector3(5, -11.5, 5.5),
+    lookAt: new THREE.Vector3(0, -11.5, 0.5),
+    fov: 54,
   },
-  // Projects: Wider chamber, pulled back
+  // Music.
   {
-    position: new THREE.Vector3(-3, -10, 7),
-    lookAt: new THREE.Vector3(0, -10, 0),
-    fov: 60,
-  },
-  // Skills: Near the floor, looking at the grid
-  {
-    position: new THREE.Vector3(0, -18, 6),
-    lookAt: new THREE.Vector3(0, -18, 0),
+    position: new THREE.Vector3(-4.5, -14.5, 6),
+    lookAt: new THREE.Vector3(0, -14.5, 0),
     fov: 58,
   },
-  // Contact: At floor level, looking outward
+  // Reflex.
   {
-    position: new THREE.Vector3(0, -24, 5),
-    lookAt: new THREE.Vector3(0, -20, -2),
-    fov: 55,
+    position: new THREE.Vector3(4.5, -17.5, 5),
+    lookAt: new THREE.Vector3(0, -17.5, 0),
+    fov: 54,
+  },
+  // Kill-dates.
+  {
+    position: new THREE.Vector3(-3.5, -20.5, 6),
+    lookAt: new THREE.Vector3(0, -20.5, 0),
+    fov: 57,
+  },
+  // Place: at floor level, looking outward into the night.
+  {
+    position: new THREE.Vector3(0, -24, 5.5),
+    lookAt: new THREE.Vector3(0, -22.5, -2),
+    fov: 56,
   },
 ]
 

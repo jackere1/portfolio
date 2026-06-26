@@ -3,6 +3,8 @@ import { useFrame, extend } from "@react-three/fiber"
 import * as THREE from "three"
 import { shaderMaterial } from "@react-three/drei"
 import { useScrollStore, getSectionProgress } from "@/hooks/use-scroll-store"
+import { makeRng, seededDrift } from "@/lib/prng"
+import { CONDUIT_DRIFT_MAX } from "@/lib/world-config"
 
 const DataFlowMaterial = shaderMaterial(
   {
@@ -64,10 +66,11 @@ declare global {
 interface ConduitProps {
   start: THREE.Vector3
   end: THREE.Vector3
+  index: number
   thickness?: number
 }
 
-function Conduit({ start, end, thickness = 0.03 }: ConduitProps) {
+function Conduit({ start, end, index, thickness = 0.03 }: ConduitProps) {
   const matRef = useRef<THREE.ShaderMaterial>(null)
   const progress = useScrollStore((s) => s.progress)
   const velocity = useScrollStore((s) => s.velocity)
@@ -77,23 +80,24 @@ function Conduit({ start, end, thickness = 0.03 }: ConduitProps) {
     const mid = new THREE.Vector3()
       .addVectors(start, end)
       .multiplyScalar(0.5)
-    // Add some curvature
-    mid.x += (Math.random() - 0.5) * 2
-    mid.y += (Math.random() - 0.5) * 1
-    mid.z += (Math.random() - 0.5) * 2
+    // Seeded, clamped curvature — reproducible across loads.
+    const rng = makeRng(`conduit-${index}`)
+    mid.x += seededDrift(rng, CONDUIT_DRIFT_MAX)
+    mid.y += seededDrift(rng, CONDUIT_DRIFT_MAX * 0.6)
+    mid.z += seededDrift(rng, CONDUIT_DRIFT_MAX)
 
     const curve = new THREE.QuadraticBezierCurve3(start, mid, end)
     const geo = new THREE.TubeGeometry(curve, 32, thickness, 8, false)
     return { geometry: geo }
-  }, [start, end, thickness])
+  }, [start, end, thickness, index])
 
   useFrame((state) => {
     if (!matRef.current) return
     matRef.current.uniforms.uTime.value = state.clock.elapsedTime
     matRef.current.uniforms.uSpeed.value = 1.0 + velocity * 100
-    // Fade in during about/experience sections
-    const aboutP = getSectionProgress(progress, "about")
-    matRef.current.uniforms.uOpacity.value = Math.min(1, aboutP * 3)
+    // Fade in as you approach the boundary — the bridges across the seam.
+    const boundaryP = getSectionProgress(progress, "boundary")
+    matRef.current.uniforms.uOpacity.value = Math.min(1, boundaryP * 3)
   })
 
   return (
@@ -147,7 +151,7 @@ export function DataConduits() {
   return (
     <>
       {conduits.map((c, i) => (
-        <Conduit key={i} start={c.start} end={c.end} />
+        <Conduit key={i} index={i} start={c.start} end={c.end} />
       ))}
     </>
   )
