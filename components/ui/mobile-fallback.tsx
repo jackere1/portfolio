@@ -39,13 +39,10 @@ export function MobileFallback() {
         <div className="boundary-region boundary-locked" />
       </div>
 
-      {/* The held line — fixed, never moves while the page scrolls behind it */}
-      <div className="held-line" aria-hidden="true" />
-      <div
-        className="fixed left-5 z-[61] flex items-center gap-3"
-        style={{ top: "calc(50vh - 0.9rem)" }}
-      >
-        <span className="pointer-events-none font-mono text-[0.625rem] tracking-[0.18em] text-[oklch(0.62_0.16_250/0.75)]">
+      {/* A small fixed marker — the latitude that never moves, and the mark
+          that opens the colophon. The boundary itself is the two regions. */}
+      <div className="fixed left-5 top-5 z-[61] flex items-center gap-2">
+        <span className="pointer-events-none font-mono text-[0.6rem] tracking-[0.18em] text-[oklch(0.62_0.16_250/0.6)]">
           {heldLine.label}
         </span>
         <button

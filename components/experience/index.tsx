@@ -8,11 +8,8 @@ import { CameraRig } from "./camera-rig"
 import { Environment } from "./environment"
 import { PostProcessing } from "./post-processing"
 import { MachineCore } from "../world/machine-core"
-import { EnergyRings } from "../world/energy-rings"
 import { GridFloor } from "../world/grid-floor"
 import { GpuParticleField } from "../world/particle-field-gpu"
-import { FloatingMonoliths } from "../world/floating-monoliths"
-import { DataConduits } from "../world/data-conduits"
 import { Seam } from "../world/seam"
 import { Rooms } from "../sections/rooms"
 import { NavOverlay } from "../ui/nav-overlay"
@@ -32,16 +29,14 @@ function Scene() {
       <CameraRig />
       <Environment />
 
-      {/* World geometry */}
+      {/* World geometry — one structure: a lattice that drifts above the seam
+          and locks below it, over a quiet grid floor. */}
       <MachineCore />
-      <EnergyRings />
       <GridFloor />
       <Seam />
-      <DataConduits />
       {quality.particleCount > 0 && (
         <GpuParticleField count={quality.particleCount} />
       )}
-      <FloatingMonoliths />
 
       {/* The seven rooms, anchored in 3D space */}
       <Rooms />

@@ -23,33 +23,21 @@ export function Seam() {
     const t = state.clock.elapsedTime
     const pulse = reduced
       ? 0
-      : Math.sin(t * 1.2) * 0.05 + Math.min(0.25, velocity * 60)
-    coreRef.current.opacity = 0.3 + pulse
+      : Math.sin(t * 1.2) * 0.08 + Math.min(0.3, velocity * 60)
+    coreRef.current.opacity = 0.6 + pulse
   })
 
   return (
     <group position={[0, SEAM_Y, 0]}>
-      {/* Faint membrane — the glow between the two regions. */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[70, 70]} />
-        <meshBasicMaterial
-          color="#4f7bdc"
-          transparent
-          opacity={0.05}
-          side={THREE.DoubleSide}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-        />
-      </mesh>
-
-      {/* The crisp seam — a thin slab; a bright line seen edge-on. */}
+      {/* The seam — a thin horizontal beam, not a plane: a crisp line that marks
+          the boundary from any angle and never washes the view. */}
       <mesh>
-        <boxGeometry args={[70, 0.05, 70]} />
+        <boxGeometry args={[140, 0.06, 0.06]} />
         <meshBasicMaterial
           ref={coreRef}
-          color="#5b86e8"
+          color="#6a93f0"
           transparent
-          opacity={0.3}
+          opacity={0.75}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
         />
