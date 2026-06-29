@@ -1,8 +1,9 @@
-import type { ComponentType } from "react"
+import { Suspense, type ComponentType } from "react"
 import { floors, SHAFT_HALF, type FloorProps } from "@/lib/floors"
-import { Y_SURFACE, Y_BEDROCK } from "@/lib/world-config"
+import { Y_SURFACE, Y_BEDROCK, SEAM_Y } from "@/lib/world-config"
 import type { RoomId } from "@/lib/content"
 import { FloorDivider } from "./floor-divider"
+import { ShaftWalls } from "./shaft-walls"
 import { FloorGate } from "./floors/gate"
 import { FloorBoundary } from "./floors/boundary"
 import { FloorLanguage } from "./floors/language"
@@ -108,22 +109,37 @@ export function Shaft() {
     <>
       <Rails />
       <Rungs />
+
+      {/* The concrete shaft — present only below ground level. */}
+      <Suspense fallback={null}>
+        <ShaftWalls />
+      </Suspense>
+
       {floors.map((f) => {
         const Scene = sceneFor[f.id]
+        // Above the open mouth of the shaft there is no ceiling; underground each
+        // cell is capped by a poured concrete storey slab.
+        const showDivider = f.cellTop < SEAM_Y + 4
+        const concrete = f.cellTop <= SEAM_Y
         return (
-          <group key={f.id}>
-            <FloorDivider y={f.cellTop} />
-            <Scene
-              yTop={f.yTop}
-              yBottom={f.yBottom}
-              yCenter={f.yCenter}
-              height={f.height}
-            />
-          </group>
+          <Suspense key={f.id} fallback={null}>
+            <group>
+              {showDivider && <FloorDivider y={f.cellTop} concrete={concrete} />}
+              <Scene
+                yTop={f.yTop}
+                yBottom={f.yBottom}
+                yCenter={f.yCenter}
+                height={f.height}
+              />
+            </group>
+          </Suspense>
         )
       })}
-      {/* The bedrock divider at the very bottom */}
-      <FloorDivider y={floors[floors.length - 1].cellBottom} />
+
+      {/* The bedrock slab at the very bottom — the foundation. */}
+      <Suspense fallback={null}>
+        <FloorDivider y={floors[floors.length - 1].cellBottom} concrete />
+      </Suspense>
     </>
   )
 }

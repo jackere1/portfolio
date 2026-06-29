@@ -11,9 +11,9 @@ import { THERMOCLINE_DEPTH, MAX_DEPTH } from "@/lib/world-config"
 import type Lenis from "lenis"
 
 /**
- * The depth gauge — the dive instrument on the right strut. A tick per level, a
- * marker at the thermocline, and a cursor tracking your current depth. Click a
- * tick to descend to that level.
+ * The floor gauge — the cab instrument on the right strut. A tick per floor, a
+ * marker at ground level, and a cursor tracking your current depth. Click a tick
+ * to descend to that floor.
  */
 export function NavOverlay() {
   const progress = useScrollStore((s) => s.progress)
@@ -34,7 +34,7 @@ export function NavOverlay() {
     <div className="gauge" aria-label="Depth gauge">
       <div className="gauge-track" />
       <div className="gauge-thermo" style={{ top: `${thermoPct}%` }}>
-        <span className="gauge-thermo-label">thermocline</span>
+        <span className="gauge-thermo-label">ground level</span>
       </div>
       <div className="gauge-cursor" style={{ top: `${progress * 100}%` }} />
 

@@ -623,6 +623,18 @@ html {
     inset 0 0 55px oklch(0.03 0.01 260 / 0.55);
 }
 
+/* Cab door edges — the retracted doors framing the open shaft view */
+.capsule-doorseam {
+  position: absolute;
+  inset: var(--deck) var(--strut) var(--foot);
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, oklch(0.8 0.17 75 / 0.12), transparent 7px),
+    linear-gradient(270deg, oklch(0.8 0.17 75 / 0.12), transparent 7px),
+    linear-gradient(90deg, transparent calc(7% - 1px), oklch(0.03 0.01 260 / 0.5) 7%, transparent calc(7% + 1px)),
+    linear-gradient(270deg, transparent calc(7% - 1px), oklch(0.03 0.01 260 / 0.5) 7%, transparent calc(7% + 1px));
+}
+
 /* Corner bolts — machined, seated in the bezel */
 .capsule-bolt {
   position: absolute;
@@ -914,6 +926,28 @@ html {
 .boundary-locked {
   top: 50vh;
   bottom: 0;
+}
+
+/* Material feel — the same hero textures as the 3D path, very faint, under the
+   grid: warm steppe above ground level, cold concrete below. */
+.boundary-drift::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, oklch(0.72 0.09 70 / 0.4), oklch(0.5 0.06 60 / 0.1) 65%, transparent),
+    url(/textures/steppe-grass/albedo.jpg);
+  background-size: cover, 180px 180px;
+  background-repeat: no-repeat, repeat;
+  opacity: 0.45;
+}
+.boundary-locked::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url(/textures/concrete-foundation/albedo.jpg);
+  background-size: 260px 260px;
+  opacity: 0.16;
 }
 @keyframes grid-drift {
   0% { background-position: 0 0; transform: skewX(0deg); }

@@ -5,11 +5,11 @@ import { progressToDepth, THERMOCLINE_DEPTH, MAX_DEPTH } from "@/lib/world-confi
 import { place, heldLine } from "@/lib/content"
 
 /**
- * The capsule — the rendered cage you ride. A fixed viewport that never moves
- * while the medium rises past it. Its instruments are fed by scroll depth:
- * the depth readout (the home for the orphaned number), the dive-site
- * coordinate, a descent status that flips at the thermocline, and the manifest
- * latch that opens the colophon — the foundation at the bottom.
+ * The cab — the elevator car you ride. A fixed viewport that never moves while
+ * the building rises past it. Its instruments are fed by scroll depth: the depth
+ * readout (the home for the orphaned number), the site coordinate, a status that
+ * flips at ground level, and the manifest latch that opens the colophon — the
+ * foundation at the bottom.
  */
 export function Capsule() {
   const loaded = useScrollStore((s) => s.loaded)
@@ -40,6 +40,9 @@ export function Capsule() {
       <div className="capsule-bar capsule-bar-right" />
       <div className="capsule-bevel" />
 
+      {/* Cab cue — the retracted door edges framing the open shaft */}
+      <div className="capsule-doorseam" />
+
       {/* Corner bolts */}
       <span className="capsule-bolt capsule-bolt-tl" />
       <span className="capsule-bolt capsule-bolt-tr" />
@@ -60,7 +63,7 @@ export function Capsule() {
           <span
             className={`capsule-status-dot ${crossed ? "is-deep" : ""}`}
           />
-          {atFloor ? "FOUNDATION" : crossed ? "BELOW THERMOCLINE" : "DESCENDING"}
+          {atFloor ? "FOUNDATION" : crossed ? "BELOW GROUND" : "DESCENDING"}
         </div>
       </div>
 

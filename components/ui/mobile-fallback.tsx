@@ -24,10 +24,10 @@ const artifactFor: Record<ArtifactKind, ComponentType> = {
 }
 
 /**
- * Mobile carries the same dive with CSS instead of WebGL: a capsule frame fixed
- * over a two-region medium (drift above the thermocline, locked below), a depth
- * readout that ticks as you scroll down, the levels as native disclosures whose
- * proof snaps open, and the same buried manifest (the colophon).
+ * Mobile carries the same descent with CSS instead of WebGL: a cab frame fixed
+ * over a two-region medium (steppe drift above ground level, locked concrete
+ * below), a depth readout that ticks as you scroll down, the levels as native
+ * disclosures whose proof snaps open, and the same buried manifest (the colophon).
  */
 export function MobileFallback() {
   const setColophonOpen = useScrollStore((s) => s.setColophonOpen)
@@ -49,7 +49,7 @@ export function MobileFallback() {
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-[oklch(0.06_0.02_260)] text-[oklch(0.92_0.01_80)]">
-      {/* The medium — two regions split at the thermocline */}
+      {/* The medium — two regions split at ground level */}
       <div className="boundary-bg" aria-hidden="true">
         <div className="boundary-region boundary-drift" />
         <div className="boundary-region boundary-locked" />
@@ -78,7 +78,7 @@ export function MobileFallback() {
           </div>
           <div className="capsule-status">
             <span className={`capsule-status-dot ${crossed ? "is-deep" : ""}`} />
-            {atFloor ? "FLOOR" : crossed ? "DEEP" : "DIVE"}
+            {atFloor ? "FOUNDATION" : crossed ? "BELOW GROUND" : "DESCENDING"}
           </div>
         </div>
 

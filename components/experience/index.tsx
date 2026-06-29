@@ -9,6 +9,7 @@ import { Environment } from "./environment"
 import { PostProcessing } from "./post-processing"
 import { Shaft } from "../world/shaft"
 import { Seam } from "../world/seam"
+import { SkyDome } from "../world/sky-dome"
 import { Levels } from "../sections/levels"
 import { NavOverlay } from "../ui/nav-overlay"
 import { ScrollHint } from "../ui/scroll-hint"
@@ -26,9 +27,10 @@ function Scene() {
     <>
       <CameraRig />
       <Environment />
+      <SkyDome />
 
       {/* The shaft — a stack of distinct floor stages you descend through,
-          divided by floor structures, with the thermocline at the boundary. */}
+          divided by storey slabs, with ground level at the boundary. */}
       <Shaft />
       <Seam />
 
@@ -96,7 +98,7 @@ export function Experience() {
           dpr={[1, 1.5]}
           camera={{ position: [0, 12, 8], fov: 60, near: 0.1, far: 200 }}
           style={{
-            background: "#0a0a14",
+            background: "#9bb0cf",
             pointerEvents: "auto",
             touchAction: "pan-y",
           }}

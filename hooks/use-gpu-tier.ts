@@ -4,6 +4,9 @@ import { useState, useEffect } from "react"
 
 export type GpuTier = "ultra" | "high" | "medium" | "low" | "fallback"
 
+/** PBR map kinds a floor may request. Drives texture-tier degradation. */
+export type MapKind = "albedo" | "normal" | "roughness" | "ao"
+
 export interface QualityConfig {
   particleCount: number
   bloomEnabled: boolean
@@ -12,7 +15,13 @@ export interface QualityConfig {
   filmGrain: boolean
   geometryDetail: "full" | "reduced" | "minimal"
   shadows: boolean
+  /** Which PBR maps to load. Empty ⇒ use a flat tinted material (weak GPUs). */
+  textureMaps: MapKind[]
+  /** Advisory source size; 0 ⇒ no image textures at all. */
+  textureSize: 2048 | 1024 | 512 | 0
 }
+
+const ALL_MAPS: MapKind[] = ["albedo", "normal", "roughness"]
 
 const QUALITY_CONFIGS: Record<GpuTier, QualityConfig> = {
   ultra: {
@@ -23,6 +32,8 @@ const QUALITY_CONFIGS: Record<GpuTier, QualityConfig> = {
     filmGrain: false,
     geometryDetail: "full",
     shadows: false,
+    textureMaps: ALL_MAPS,
+    textureSize: 1024,
   },
   high: {
     particleCount: 2000,
@@ -32,6 +43,8 @@ const QUALITY_CONFIGS: Record<GpuTier, QualityConfig> = {
     filmGrain: false,
     geometryDetail: "full",
     shadows: false,
+    textureMaps: ALL_MAPS,
+    textureSize: 1024,
   },
   medium: {
     particleCount: 800,
@@ -41,6 +54,9 @@ const QUALITY_CONFIGS: Record<GpuTier, QualityConfig> = {
     filmGrain: false,
     geometryDetail: "reduced",
     shadows: false,
+    // Drop the (relief-only) normal map on integrated GPUs; keep albedo + roughness.
+    textureMaps: ["albedo", "roughness"],
+    textureSize: 512,
   },
   low: {
     particleCount: 0,
@@ -50,6 +66,9 @@ const QUALITY_CONFIGS: Record<GpuTier, QualityConfig> = {
     filmGrain: false,
     geometryDetail: "minimal",
     shadows: false,
+    // No image textures — floors fall back to flat tinted materials.
+    textureMaps: [],
+    textureSize: 0,
   },
   fallback: {
     particleCount: 0,
@@ -59,6 +78,8 @@ const QUALITY_CONFIGS: Record<GpuTier, QualityConfig> = {
     filmGrain: false,
     geometryDetail: "minimal",
     shadows: false,
+    textureMaps: [],
+    textureSize: 0,
   },
 }
 

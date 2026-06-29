@@ -1,5 +1,8 @@
+"use client"
+
 import { useMemo } from "react"
 import { makeRng, seededRange } from "@/lib/prng"
+import { PbrMaterial } from "@/lib/textures"
 import type { FloorProps } from "@/lib/floors"
 
 interface Block {
@@ -13,19 +16,24 @@ interface Block {
 }
 
 /**
- * Place — Ulaanbaatar at night, on the bedrock. A low silhouette of blocks and
- * ger roofs with scattered window lights. The ground the whole dive rests on;
- * the work that only matters here.
+ * Place — the basement foundation. Raw concrete bedrock, structural and honest,
+ * the part not permitted to lie; the colophon opens from here. On the slab sits
+ * Ulaanbaatar at night — a low silhouette of blocks and ger roofs, the city the
+ * whole descent rests on, the work that only matters here.
  */
-export function FloorPlace({ yBottom }: FloorProps) {
+export function FloorPlace({ yTop, yBottom }: FloorProps) {
+  const floorY = yBottom
+  const ceilY = yTop
+  const colH = ceilY - floorY
+
   const blocks = useMemo<Block[]>(() => {
     const rng = makeRng("floor-place")
-    return Array.from({ length: 46 }, () => ({
-      x: seededRange(rng, -4.6, 4.6),
-      z: seededRange(rng, -3.5, 1.5),
-      w: seededRange(rng, 0.3, 0.85),
-      d: seededRange(rng, 0.3, 0.85),
-      h: seededRange(rng, 0.5, 2.6),
+    return Array.from({ length: 40 }, () => ({
+      x: seededRange(rng, -3.6, 3.6),
+      z: seededRange(rng, -3.8, 0.6),
+      w: seededRange(rng, 0.26, 0.7),
+      d: seededRange(rng, 0.26, 0.7),
+      h: seededRange(rng, 0.4, 2.1),
       lit: rng() > 0.45,
       cool: rng() > 0.72,
     }))
@@ -33,19 +41,50 @@ export function FloorPlace({ yBottom }: FloorProps) {
 
   const gers = useMemo(() => {
     const rng = makeRng("floor-place-ger")
-    return Array.from({ length: 10 }, () => ({
-      x: seededRange(rng, -4.5, 4.5),
-      z: seededRange(rng, 0, 2),
-      r: seededRange(rng, 0.22, 0.4),
+    return Array.from({ length: 9 }, () => ({
+      x: seededRange(rng, -3.6, 3.6),
+      z: seededRange(rng, -0.2, 1.4),
+      r: seededRange(rng, 0.2, 0.36),
     }))
   }, [])
 
-  const baseY = yBottom + 0.4
+  const cityBase = floorY + 0.02
 
   return (
     <group>
+      {/* The concrete foundation slab — the hero surface. */}
+      <mesh position={[0, floorY, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[10, 10]} />
+        <PbrMaterial
+          name="concrete-foundation"
+          repeat={[3, 3]}
+          anisotropy={8}
+          flatColor="#3a3a3e"
+          flatRoughness={0.95}
+        />
+      </mesh>
+
+      {/* Structural columns — poured concrete, floor to ceiling. */}
+      {(
+        [
+          [-3.6, -3.6],
+          [3.6, -3.6],
+        ] as const
+      ).map(([x, z], i) => (
+        <mesh key={`col${i}`} position={[x, floorY + colH / 2, z]}>
+          <boxGeometry args={[0.55, colH, 0.55]} />
+          <PbrMaterial
+            name="concrete-foundation"
+            repeat={[1, Math.max(1, Math.round(colH / 3))]}
+            flatColor="#35353a"
+            flatRoughness={0.95}
+          />
+        </mesh>
+      ))}
+
+      {/* The city on the bedrock — blocks with scattered window lights. */}
       {blocks.map((b, i) => (
-        <group key={`b${i}`} position={[b.x, baseY + b.h / 2, b.z]}>
+        <group key={`b${i}`} position={[b.x, cityBase + b.h / 2, b.z]}>
           <mesh>
             <boxGeometry args={[b.w, b.h, b.d]} />
             <meshStandardMaterial
@@ -58,7 +97,7 @@ export function FloorPlace({ yBottom }: FloorProps) {
           </mesh>
           {b.lit && (
             <mesh position={[0, b.h * 0.1, b.d / 2 + 0.002]}>
-              <planeGeometry args={[b.w * 0.5, 0.13]} />
+              <planeGeometry args={[b.w * 0.5, 0.12]} />
               <meshBasicMaterial
                 color={b.cool ? "#9fb8f0" : "#f0b452"}
                 transparent
@@ -69,9 +108,9 @@ export function FloorPlace({ yBottom }: FloorProps) {
         </group>
       ))}
 
-      {/* Ger roofs — low domes among the blocks */}
+      {/* Ger roofs — low domes among the blocks. */}
       {gers.map((g, i) => (
-        <mesh key={`g${i}`} position={[g.x, baseY + g.r * 0.4, g.z]}>
+        <mesh key={`g${i}`} position={[g.x, cityBase + g.r * 0.4, g.z]}>
           <coneGeometry args={[g.r, g.r * 0.7, 8]} />
           <meshStandardMaterial
             color="#15100a"
@@ -82,6 +121,30 @@ export function FloorPlace({ yBottom }: FloorProps) {
           />
         </mesh>
       ))}
+
+      {/* The survey benchmark — the immovable mark on bedrock, front and centre.
+          The exact coordinate is stated in the colophon; here it is only the disc. */}
+      <group position={[0, floorY + 0.03, 2.2]}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.5, 0.5, 0.05, 32]} />
+          <meshStandardMaterial
+            color="#b9892f"
+            emissive="#e8a020"
+            emissiveIntensity={0.12}
+            metalness={0.9}
+            roughness={0.35}
+          />
+        </mesh>
+        <mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.34, 0.02, 8, 32]} />
+          <meshStandardMaterial color="#e8a020" emissive="#e8a020" emissiveIntensity={0.5} />
+        </mesh>
+        {/* The mark itself — cool blue, the boundary note */}
+        <mesh position={[0, 0.05, 0]}>
+          <sphereGeometry args={[0.05, 12, 12]} />
+          <meshStandardMaterial color="#4060c0" emissive="#4060c0" emissiveIntensity={0.9} />
+        </mesh>
+      </group>
     </group>
   )
 }
