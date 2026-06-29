@@ -7,15 +7,16 @@ interface ProofRevealProps {
   label: string
   /** The substrate revealed underneath — the proof. Snaps in, no easing. */
   children: ReactNode
+  /** Show the proof expanded by default (collapsible). */
+  defaultOpen?: boolean
 }
 
 /**
- * Surface → proof. The claim sits above; on click / tap / Enter / Space the
- * substrate snaps into view instantly (foreground speed — no transition),
- * lifting the layer to expose the deterministic proof beneath the prose.
+ * Surface → proof. The claim sits above; the substrate sits open beneath it. The
+ * toggle collapses/expands it instantly (foreground speed — no transition).
  */
-export function ProofReveal({ label, children }: ProofRevealProps) {
-  const [open, setOpen] = useState(false)
+export function ProofReveal({ label, children, defaultOpen = false }: ProofRevealProps) {
+  const [open, setOpen] = useState(defaultOpen)
   const panelId = useId()
 
   return (

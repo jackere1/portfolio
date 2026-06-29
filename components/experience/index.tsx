@@ -7,15 +7,13 @@ import Lenis from "lenis"
 import { CameraRig } from "./camera-rig"
 import { Environment } from "./environment"
 import { PostProcessing } from "./post-processing"
-import { MachineCore } from "../world/machine-core"
-import { GridFloor } from "../world/grid-floor"
-import { GpuParticleField } from "../world/particle-field-gpu"
+import { Shaft } from "../world/shaft"
 import { Seam } from "../world/seam"
-import { Rooms } from "../sections/rooms"
+import { Levels } from "../sections/levels"
 import { NavOverlay } from "../ui/nav-overlay"
 import { ScrollHint } from "../ui/scroll-hint"
 import { LoadingScreen } from "../ui/loading-screen"
-import { HeldLine } from "../ui/held-line"
+import { Capsule } from "../ui/capsule"
 import { Colophon } from "../ui/colophon"
 import { Cursor } from "../ui/cursor"
 import { useScrollStore } from "@/hooks/use-scroll-store"
@@ -29,17 +27,10 @@ function Scene() {
       <CameraRig />
       <Environment />
 
-      {/* World geometry — one structure: a lattice that drifts above the seam
-          and locks below it, over a quiet grid floor. */}
-      <MachineCore />
-      <GridFloor />
+      {/* The shaft — a stack of distinct floor stages you descend through,
+          divided by floor structures, with the thermocline at the boundary. */}
+      <Shaft />
       <Seam />
-      {quality.particleCount > 0 && (
-        <GpuParticleField count={quality.particleCount} />
-      )}
-
-      {/* The seven rooms, anchored in 3D space */}
-      <Rooms />
 
       {/* Post-processing effects */}
       <PostProcessing quality={quality} />
@@ -117,7 +108,8 @@ export function Experience() {
       </div>
 
       {/* 2D overlays on top of the canvas (DOM siblings — the camera can't touch them) */}
-      <HeldLine />
+      <Capsule />
+      <Levels />
       <NavOverlay />
       <ScrollHint />
       <Cursor />

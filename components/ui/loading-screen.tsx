@@ -33,8 +33,8 @@ export function LoadingScreen() {
         </div>
 
         <div className="text-center">
-          <p className="text-sm font-mono text-[oklch(0.55_0.02_80)] tracking-wider">
-            INITIALIZING
+          <p className="text-sm font-mono text-[oklch(0.55_0.02_80)] tracking-[0.28em]">
+            PRESSURIZING
           </p>
         </div>
       </div>

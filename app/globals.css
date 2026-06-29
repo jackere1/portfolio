@@ -24,6 +24,18 @@
   --input: oklch(0.14 0.015 260);
   --ring: oklch(0.78 0.18 75);
   --radius: 0.625rem;
+  /* Capsule frame geometry — shared by the cage and the level HUD */
+  --cap-strut: 48px;
+  --cap-deck: 64px;
+  --cap-foot: 50px;
+}
+
+@media (max-width: 700px) {
+  :root {
+    --cap-strut: 18px;
+    --cap-deck: 50px;
+    --cap-foot: 40px;
+  }
 }
 
 @theme inline {
@@ -510,6 +522,354 @@ html {
   font-family: var(--ff-mono), ui-monospace, monospace;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+/* ============================================================
+   The capsule — the rendered cage you ride
+   ============================================================ */
+.capsule {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  --strut: var(--cap-strut);
+  --deck: var(--cap-deck);
+  --foot: var(--cap-foot);
+  --metal-hi: oklch(0.32 0.03 72);
+  --metal-mid: oklch(0.15 0.022 66);
+  --metal-lo: oklch(0.06 0.014 60);
+  --edge: oklch(0.8 0.17 75 / 0.55);
+  --rivet: radial-gradient(circle, oklch(0.55 0.06 75) 0.6px, oklch(0.09 0.02 60) 1.8px, transparent 2.4px);
+}
+
+/* Glass sheen + condensation over the viewport opening */
+.capsule-glass {
+  position: absolute;
+  inset: var(--deck) var(--strut) var(--foot);
+  pointer-events: none;
+  background:
+    linear-gradient(118deg, oklch(1 0 0 / 0.05), transparent 38%),
+    linear-gradient(300deg, oklch(0.62 0.16 250 / 0.04), transparent 42%);
+}
+/* Pressure vignette — tightens with depth (opacity set inline) */
+.capsule-vignette {
+  position: absolute;
+  inset: var(--deck) var(--strut) var(--foot);
+  pointer-events: none;
+  background: radial-gradient(
+    120% 100% at 50% 42%,
+    transparent 46%,
+    oklch(0.03 0.01 260 / 0.85) 100%
+  );
+}
+
+/* Cage struts (brushed metal with a beveled inner edge + rivets) */
+.capsule-bar {
+  position: absolute;
+  pointer-events: none;
+}
+.capsule-bar-top {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--deck);
+  background:
+    var(--rivet) 0 calc(var(--deck) - 11px) / 34px 34px repeat-x,
+    linear-gradient(var(--metal-hi), var(--metal-mid) 55%, var(--metal-lo));
+  border-top: 1px solid oklch(0.34 0.03 260 / 0.7);
+  border-bottom: 1px solid var(--edge);
+  box-shadow: inset 0 -8px 14px oklch(0.03 0.01 260 / 0.7);
+}
+.capsule-bar-bottom {
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--foot);
+  background:
+    var(--rivet) 0 7px / 34px 34px repeat-x,
+    linear-gradient(var(--metal-lo), var(--metal-mid) 45%, var(--metal-hi));
+  border-top: 1px solid var(--edge);
+  box-shadow: inset 0 8px 14px oklch(0.03 0.01 260 / 0.7);
+}
+.capsule-bar-left {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--strut);
+  background:
+    var(--rivet) 7px 0 / 34px 34px repeat-y,
+    linear-gradient(90deg, var(--metal-lo), var(--metal-mid) 55%, var(--metal-hi));
+  border-right: 1px solid var(--edge);
+}
+.capsule-bar-right {
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: var(--strut);
+  background:
+    var(--rivet) calc(var(--strut) - 11px) 0 / 34px 34px repeat-y,
+    linear-gradient(90deg, var(--metal-hi), var(--metal-mid) 45%, var(--metal-lo));
+  border-left: 1px solid var(--edge);
+}
+/* The glowing amber inner rim of the porthole */
+.capsule-bevel {
+  position: absolute;
+  inset: var(--deck) var(--strut) var(--foot);
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 1px oklch(0.8 0.17 75 / 0.5),
+    inset 0 0 1px 1px oklch(0.8 0.17 75 / 0.15),
+    inset 0 0 22px oklch(0.8 0.17 75 / 0.07),
+    inset 0 0 55px oklch(0.03 0.01 260 / 0.55);
+}
+
+/* Corner bolts — machined, seated in the bezel */
+.capsule-bolt {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 38% 34%,
+    oklch(0.62 0.06 75),
+    oklch(0.22 0.03 70) 55%,
+    oklch(0.06 0.015 60)
+  );
+  box-shadow:
+    0 0 0 1px oklch(0.8 0.17 75 / 0.4),
+    0 1px 2px oklch(0 0 0 / 0.6);
+}
+.capsule-bolt-tl { top: calc(var(--deck) - 23px); left: calc(var(--strut) - 23px); }
+.capsule-bolt-tr { top: calc(var(--deck) - 23px); right: calc(var(--strut) - 23px); }
+.capsule-bolt-bl { bottom: calc(var(--foot) - 23px); left: calc(var(--strut) - 23px); }
+.capsule-bolt-br { bottom: calc(var(--foot) - 23px); right: calc(var(--strut) - 23px); }
+
+/* Top instrument deck */
+.capsule-deck {
+  position: absolute;
+  top: 0;
+  left: var(--strut);
+  right: var(--strut);
+  height: var(--deck);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 0 1.1rem;
+  font-family: var(--ff-mono), ui-monospace, monospace;
+}
+.capsule-depth {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  color: oklch(0.78 0.18 75);
+  font-variant-numeric: tabular-nums;
+}
+.capsule-depth-num { font-size: 1.05rem; letter-spacing: 0.06em; }
+.capsule-depth-unit { font-size: 0.7rem; color: oklch(0.78 0.18 75 / 0.7); }
+.capsule-depth-max {
+  font-size: 0.6rem;
+  color: oklch(0.55 0.02 80 / 0.7);
+  letter-spacing: 0.1em;
+}
+.capsule-coord {
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  color: oklch(0.62 0.16 250 / 0.75);
+}
+.capsule-status {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.58rem;
+  letter-spacing: 0.22em;
+  color: oklch(0.55 0.02 80);
+}
+.capsule-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: oklch(0.78 0.18 75);
+  box-shadow: 0 0 6px oklch(0.78 0.18 75 / 0.6);
+}
+.capsule-status-dot.is-deep {
+  background: oklch(0.62 0.16 250);
+  box-shadow: 0 0 6px oklch(0.62 0.16 250 / 0.6);
+}
+
+/* Bottom latch — opens the colophon */
+.capsule-latch {
+  position: absolute;
+  bottom: 0;
+  left: var(--strut);
+  right: var(--strut);
+  height: var(--foot);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 1.1rem;
+}
+.capsule-latch-btn {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: oklch(0.55 0.02 80);
+}
+.capsule-latch-btn:hover { color: oklch(0.78 0.18 75); }
+.capsule-latch-btn:focus-visible {
+  outline: 1px solid oklch(0.78 0.18 75 / 0.7);
+  outline-offset: 3px;
+}
+.capsule-latch-mark { font-size: 0.8rem; color: oklch(0.62 0.16 250 / 0.85); }
+.capsule-latch-btn.is-ready { color: oklch(0.78 0.18 75); }
+.capsule-latch-btn.is-ready .capsule-latch-mark { color: oklch(0.78 0.18 75); }
+
+/* ============================================================
+   The levels — content held in one fixed slot in the viewport
+   ============================================================ */
+.levels {
+  position: fixed;
+  top: var(--cap-deck);
+  left: var(--cap-strut);
+  right: var(--cap-strut);
+  bottom: var(--cap-foot);
+  z-index: 45;
+  pointer-events: none;
+}
+.level {
+  position: absolute;
+  left: clamp(1.5rem, 5vw, 5rem);
+  top: 50%;
+  transform: translateY(-50%);
+  width: min(440px, 44vw);
+  /* A soft scrim keeps the prose readable over the drifting medium. */
+  padding: 1.5rem 1.75rem;
+  background: radial-gradient(
+    120% 90% at 30% 50%,
+    oklch(0.05 0.012 260 / 0.72),
+    transparent 75%
+  );
+}
+.level-index {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: oklch(0.78 0.18 75 / 0.7);
+}
+.level-num { color: oklch(0.78 0.18 75); }
+.level-of { color: oklch(0.55 0.02 80 / 0.7); }
+.level-rule {
+  flex: 1;
+  height: 1px;
+  max-width: 48px;
+  background: linear-gradient(90deg, oklch(0.78 0.18 75 / 0.4), transparent);
+}
+.level-name { color: oklch(0.55 0.02 80 / 0.8); }
+
+/* ============================================================
+   The depth gauge — dive instrument on the right strut
+   ============================================================ */
+.gauge {
+  position: fixed;
+  right: 13px;
+  top: var(--cap-deck);
+  bottom: var(--cap-foot);
+  width: 24px;
+  z-index: 50;
+  pointer-events: none;
+}
+.gauge-track {
+  position: absolute;
+  right: 11px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(
+    oklch(0.78 0.18 75 / 0.18),
+    oklch(0.78 0.18 75 / 0.05)
+  );
+}
+.gauge-cursor {
+  position: absolute;
+  right: 6px;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-right: 7px solid oklch(0.78 0.18 75);
+  filter: drop-shadow(0 0 3px oklch(0.78 0.18 75 / 0.6));
+}
+.gauge-thermo {
+  position: absolute;
+  right: 6px;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 1px;
+  background: oklch(0.62 0.16 250);
+  box-shadow: 0 0 4px oklch(0.62 0.16 250 / 0.6);
+}
+.gauge-thermo-label {
+  position: absolute;
+  right: 16px;
+  top: -0.45rem;
+  white-space: nowrap;
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-size: 0.5rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: oklch(0.62 0.16 250 / 0.55);
+}
+.gauge-tick {
+  position: absolute;
+  right: 5px;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 2px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.gauge-tick-mark {
+  width: 8px;
+  height: 1px;
+  background: oklch(0.78 0.18 75 / 0.45);
+}
+.gauge-tick-label {
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  color: oklch(0.55 0.02 80 / 0.8);
+  opacity: 0;
+}
+.gauge-tick:hover .gauge-tick-label,
+.gauge-tick.is-active .gauge-tick-label {
+  opacity: 1;
+}
+.gauge-tick:hover .gauge-tick-mark,
+.gauge-tick.is-active .gauge-tick-mark {
+  width: 14px;
+  background: oklch(0.78 0.18 75);
+}
+.gauge-tick:focus-visible {
+  outline: 1px solid oklch(0.78 0.18 75 / 0.7);
+  outline-offset: 2px;
 }
 
 /* ============================================================

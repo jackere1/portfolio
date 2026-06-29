@@ -1,69 +1,65 @@
 "use client"
 
 import { useCallback } from "react"
-import { useScrollStore, SECTION_RANGES, type SectionName } from "@/hooks/use-scroll-store"
+import {
+  useScrollStore,
+  SECTION_RANGES,
+  type SectionName,
+} from "@/hooks/use-scroll-store"
+import { rooms } from "@/lib/content"
+import { THERMOCLINE_DEPTH, MAX_DEPTH } from "@/lib/world-config"
 import type Lenis from "lenis"
 
-const sections: { name: SectionName; label: string }[] = [
-  { name: "gate", label: "Gate" },
-  { name: "boundary", label: "Boundary" },
-  { name: "language", label: "Language" },
-  { name: "music", label: "Music" },
-  { name: "reflex", label: "Reflex" },
-  { name: "killdates", label: "Kill-dates" },
-  { name: "place", label: "Place" },
-]
-
+/**
+ * The depth gauge — the dive instrument on the right strut. A tick per level, a
+ * marker at the thermocline, and a cursor tracking your current depth. Click a
+ * tick to descend to that level.
+ */
 export function NavOverlay() {
-  const activeSection = useScrollStore((s) => s.activeSection)
+  const progress = useScrollStore((s) => s.progress)
   const loaded = useScrollStore((s) => s.loaded)
 
-  const scrollToSection = useCallback((name: SectionName) => {
-    const [start, end] = SECTION_RANGES[name]
-    // Offset 20% into the section so content is fully visible when landing
-    const target = name === "gate" ? 0 : start + (end - start) * 0.2
+  const diveTo = useCallback((p: number) => {
     const lenis = (window as Window & { __lenis?: Lenis }).__lenis
-    const scrollHeight = document.documentElement.scrollHeight - window.innerHeight
-    if (lenis) {
-      lenis.scrollTo(target * scrollHeight, { duration: 1.5 })
-    } else {
-      window.scrollTo({ top: target * scrollHeight, behavior: "smooth" })
-    }
+    const max = document.documentElement.scrollHeight - window.innerHeight
+    if (lenis) lenis.scrollTo(p * max, { duration: 1.4 })
+    else window.scrollTo({ top: p * max, behavior: "smooth" })
   }, [])
 
   if (!loaded) return null
 
+  const thermoPct = (THERMOCLINE_DEPTH / MAX_DEPTH) * 100
+
   return (
-    <nav
-      className="fixed right-6 top-1/2 -translate-y-1/2 z-50 hidden lg:flex flex-col items-end gap-4"
-      aria-label="Section navigation"
-    >
-      {sections.map(({ name, label }) => {
-        const isActive = activeSection === name
+    <div className="gauge" aria-label="Depth gauge">
+      <div className="gauge-track" />
+      <div className="gauge-thermo" style={{ top: `${thermoPct}%` }}>
+        <span className="gauge-thermo-label">thermocline</span>
+      </div>
+      <div className="gauge-cursor" style={{ top: `${progress * 100}%` }} />
+
+      {rooms.map((room, i) => {
+        const [start, end] = SECTION_RANGES[room.id as SectionName]
+        const mid = (start + end) / 2
+        const active = progress >= start && progress < end
+        const target = room.id === "gate" ? 0 : start + (end - start) * 0.3
         return (
           <button
-            key={name}
+            key={room.id}
             type="button"
-            onClick={() => scrollToSection(name)}
-            className="flex items-center gap-3 group cursor-pointer bg-transparent border-none p-0"
-            aria-label={`Go to ${label}`}
-            aria-current={isActive ? "true" : undefined}
+            className={`gauge-tick ${active ? "is-active" : ""}`}
+            style={{ top: `${mid * 100}%` }}
+            onClick={() => diveTo(target)}
+            aria-label={`Descend to level ${i + 1}: ${room.id}`}
+            aria-current={active ? "true" : undefined}
           >
-            <span
-              className={`text-[10px] font-mono uppercase tracking-wider ${
-                isActive
-                  ? "text-[oklch(0.78_0.18_75)] opacity-100 translate-x-0"
-                  : "text-[oklch(0.55_0.02_80)] opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0"
-              }`}
-            >
-              {label}
+            <span className="gauge-tick-mark" />
+            <span className="gauge-tick-label">
+              {String(i + 1).padStart(2, "0")}
             </span>
-            <div
-              className={`nav-dot ${isActive ? "active" : ""}`}
-            />
           </button>
         )
       })}
-    </nav>
+    </div>
   )
 }

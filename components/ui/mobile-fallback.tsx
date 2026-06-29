@@ -1,7 +1,8 @@
 "use client"
 
-import type { ComponentType } from "react"
-import { rooms, heldLine, type ArtifactKind } from "@/lib/content"
+import { useEffect, useState, type ComponentType } from "react"
+import { rooms, heldLine, place, type ArtifactKind } from "@/lib/content"
+import { MAX_DEPTH, THERMOCLINE_DEPTH } from "@/lib/world-config"
 import { useScrollStore } from "@/hooks/use-scroll-store"
 import { Colophon } from "@/components/ui/colophon"
 import { Gate } from "@/components/artifacts/gate"
@@ -23,49 +24,97 @@ const artifactFor: Record<ArtifactKind, ComponentType> = {
 }
 
 /**
- * Mobile carries the same boundary, with CSS instead of WebGL: a held line
- * fixed at the screen's center, a drifting grid above it and a locked grid
- * below, the rooms as native disclosures whose proof snaps open, and the same
- * buried colophon. No 3D, no heavy effects.
+ * Mobile carries the same dive with CSS instead of WebGL: a capsule frame fixed
+ * over a two-region medium (drift above the thermocline, locked below), a depth
+ * readout that ticks as you scroll down, the levels as native disclosures whose
+ * proof snaps open, and the same buried manifest (the colophon).
  */
 export function MobileFallback() {
   const setColophonOpen = useScrollStore((s) => s.setColophonOpen)
+  const [depth, setDepth] = useState(0)
+
+  useEffect(() => {
+    const onScroll = () => {
+      const max = document.documentElement.scrollHeight - window.innerHeight
+      const p = max > 0 ? window.scrollY / max : 0
+      setDepth(p * MAX_DEPTH)
+    }
+    onScroll()
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [])
+
+  const crossed = depth >= THERMOCLINE_DEPTH
+  const atFloor = depth >= MAX_DEPTH - 6
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-[oklch(0.06_0.02_260)] text-[oklch(0.92_0.01_80)]">
-      {/* Two regions, split at the held line */}
+      {/* The medium — two regions split at the thermocline */}
       <div className="boundary-bg" aria-hidden="true">
         <div className="boundary-region boundary-drift" />
         <div className="boundary-region boundary-locked" />
       </div>
 
-      {/* A small fixed marker — the latitude that never moves, and the mark
-          that opens the colophon. The boundary itself is the two regions. */}
-      <div className="fixed left-5 top-5 z-[61] flex items-center gap-2">
-        <span className="pointer-events-none font-mono text-[0.6rem] tracking-[0.18em] text-[oklch(0.62_0.16_250/0.6)]">
-          {heldLine.label}
-        </span>
-        <button
-          type="button"
-          aria-label={heldLine.open}
-          onClick={() => setColophonOpen(true)}
-          className="font-mono text-[0.85rem] leading-none text-[oklch(0.62_0.16_250/0.85)]"
-        >
-          {heldLine.marker}
-        </button>
+      {/* The capsule frame */}
+      <div className="capsule" aria-hidden="false">
+        <div className="capsule-glass" />
+        <div className="capsule-vignette" style={{ opacity: 0.4 }} />
+        <div className="capsule-bar capsule-bar-top" />
+        <div className="capsule-bar capsule-bar-bottom" />
+        <div className="capsule-bar capsule-bar-left" />
+        <div className="capsule-bar capsule-bar-right" />
+        <div className="capsule-bevel" />
+        <span className="capsule-bolt capsule-bolt-tl" />
+        <span className="capsule-bolt capsule-bolt-tr" />
+        <span className="capsule-bolt capsule-bolt-bl" />
+        <span className="capsule-bolt capsule-bolt-br" />
+
+        <div className="capsule-deck">
+          <div className="capsule-depth">
+            <span className="capsule-depth-num">
+              {Math.round(depth).toString().padStart(3, "0")}
+            </span>
+            <span className="capsule-depth-unit">m</span>
+          </div>
+          <div className="capsule-status">
+            <span className={`capsule-status-dot ${crossed ? "is-deep" : ""}`} />
+            {atFloor ? "FLOOR" : crossed ? "DEEP" : "DIVE"}
+          </div>
+        </div>
+
+        <div className="capsule-latch">
+          <button
+            type="button"
+            aria-label={heldLine.open}
+            onClick={() => setColophonOpen(true)}
+            className={`capsule-latch-btn ${atFloor ? "is-ready" : ""}`}
+          >
+            <span className="capsule-latch-mark">{heldLine.marker}</span>
+            manifest
+          </button>
+        </div>
       </div>
 
-      {/* The rooms */}
-      <main className="relative z-10 mx-auto max-w-md px-6 py-[40vh]">
-        {rooms.map((room) => {
+      {/* The levels */}
+      <main className="relative z-10 mx-auto max-w-md px-7 pt-[24vh] pb-[20vh]">
+        <p className="mb-[18vh] font-mono text-[0.6rem] tracking-[0.22em] text-[oklch(0.62_0.16_250/0.7)]">
+          {place.coordinate}
+        </p>
+        {rooms.map((room, i) => {
           const Artifact = artifactFor[room.artifact]
           return (
-            <section key={room.id} className="mb-[28vh]">
-              <div className="room-marker">{room.marker}</div>
+            <section key={room.id} className="mb-[24vh]">
+              <div className="level-index">
+                <span className="level-num">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <span className="level-of">/ 07</span>
+                <span className="level-rule" />
+                <span className="level-name">{room.id}</span>
+              </div>
               <p className="lead mt-3">{room.lead}</p>
               {room.body && <p className="voice mt-4">{room.body}</p>}
-
-              <details className="room-details mt-5">
+              <details className="room-details mt-5" open>
                 <summary className="reveal-control">
                   <span aria-hidden="true">▸ </span>
                   {room.reveal}
@@ -77,10 +126,6 @@ export function MobileFallback() {
             </section>
           )
         })}
-
-        <footer className="mt-8 border-t border-[oklch(0.62_0.16_250/0.2)] pt-4 font-mono text-[0.625rem] text-[oklch(0.5_0.02_80)]">
-          encold.guru — built at night, in Ulaanbaatar.
-        </footer>
       </main>
 
       <Colophon />
