@@ -4,26 +4,29 @@ import { Y_SURFACE, Y_BEDROCK, SEAM_Y } from "@/lib/world-config"
 import type { RoomId } from "@/lib/content"
 import { FloorDivider } from "./floor-divider"
 import { ShaftWalls } from "./shaft-walls"
-import { FloorGate } from "./floors/gate"
-import { FloorBoundary } from "./floors/boundary"
-import { FloorLanguage } from "./floors/language"
-import { FloorMusic } from "./floors/music"
+import { FloorSurface } from "./floors/surface"
+import { FloorThreshold } from "./floors/threshold"
 import { FloorReflex } from "./floors/reflex"
-import { FloorKilldates } from "./floors/killdates"
+import { FloorEar } from "./floors/ear"
+import { FloorTongue } from "./floors/tongue"
+import { FloorOath } from "./floors/oath"
 import { FloorPlace } from "./floors/place"
 
 const sceneFor: Record<RoomId, ComponentType<FloorProps>> = {
-  gate: FloorGate,
-  boundary: FloorBoundary,
-  language: FloorLanguage,
-  music: FloorMusic,
+  surface: FloorSurface,
+  threshold: FloorThreshold,
   reflex: FloorReflex,
-  killdates: FloorKilldates,
+  ear: FloorEar,
+  tongue: FloorTongue,
+  oath: FloorOath,
   place: FloorPlace,
 }
 
 const RAIL = 0.16
-const railTop = Y_SURFACE + 3
+// The rails belong to the shaft, not the sky: they begin just above the seam
+// (ground level) and run to the bedrock. Above ground the steppe is open — no
+// cage over the appearance; the structure forms as you cross into the deep.
+const railTop = SEAM_Y + 2
 const railBottom = Y_BEDROCK - 2
 const railH = railTop - railBottom
 const railMidY = (railTop + railBottom) / 2
@@ -130,6 +133,7 @@ export function Shaft() {
                 yBottom={f.yBottom}
                 yCenter={f.yCenter}
                 height={f.height}
+                stillness={f.stillness}
               />
             </group>
           </Suspense>

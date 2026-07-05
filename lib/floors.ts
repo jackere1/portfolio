@@ -1,5 +1,5 @@
 import { SECTION_RANGES } from "@/hooks/use-scroll-store"
-import { Y_SURFACE, Y_BEDROCK } from "@/lib/world-config"
+import { Y_SURFACE, Y_BEDROCK, stillnessAt } from "@/lib/world-config"
 import { rooms, type RoomId } from "@/lib/content"
 
 // The shaft's cross-section: each floor cell is a square bay of this half-width.
@@ -18,12 +18,12 @@ export function yAtProgress(p: number): number {
 // below). Floor-anchored stages stand on the cell floor (void only above).
 type Anchor = "center" | "floor"
 const ANCHOR: Record<RoomId, Anchor> = {
-  gate: "center",
-  boundary: "center",
-  language: "center",
-  music: "center",
+  surface: "center",
+  threshold: "center",
   reflex: "center",
-  killdates: "floor",
+  ear: "center",
+  tongue: "center",
+  oath: "floor",
   place: "floor",
 }
 
@@ -38,6 +38,8 @@ export interface FloorBand {
   yBottom: number
   yCenter: number
   height: number
+  /** Temperament at this stratum: 0 = surface drift, 1 = bedrock stillness. */
+  stillness: number
 }
 
 export const floors: FloorBand[] = rooms.map((room, index) => {
@@ -58,6 +60,8 @@ export const floors: FloorBand[] = rooms.map((room, index) => {
     yBottom = c - h / 2
   }
 
+  const yCenter = (yTop + yBottom) / 2
+
   return {
     id: room.id,
     index,
@@ -65,15 +69,20 @@ export const floors: FloorBand[] = rooms.map((room, index) => {
     cellBottom,
     yTop,
     yBottom,
-    yCenter: (yTop + yBottom) / 2,
+    yCenter,
     height: yTop - yBottom,
+    stillness: stillnessAt(yCenter),
   }
 })
 
 // Each floor scene receives its compact stage bounds and builds within them.
+// `stillness` is the stratum's temperament (see world-config): scale every
+// ambient amplitude by (1 − 0.65 × stillness). Adopt it whenever a scene's
+// motion is next touched — new work must never drift harder than its depth allows.
 export interface FloorProps {
   yTop: number
   yBottom: number
   yCenter: number
   height: number
+  stillness: number
 }

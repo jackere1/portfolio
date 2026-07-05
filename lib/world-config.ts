@@ -13,9 +13,9 @@ export const Y_BEDROCK = -40
 
 // World-space Y of the seam (the thermocline). ABOVE it the medium drifts
 // (probabilistic); BELOW it the field locks (deterministic, crisp, regular).
-// Placed so the camera punches through it just as the Boundary level is read —
+// Placed so the camera punches through it just as the Threshold level is read —
 // you cross the line while reading about the line. The brief surface is the
-// guessing water; most of the dive is the deep, where nothing is permitted to lie.
+// shown self; most of the dive is the deep, where nothing is permitted to lie.
 export const SEAM_Y = 8
 
 // Depth readout: progress maps to metres of descent (the cabin instrument).
@@ -45,4 +45,15 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
 // 0 below the seam (locked), 1 above the seam (drift), smooth across the band.
 export function regionFactor(y: number): number {
   return smoothstep(SEAM_Y - SEAM_BAND, SEAM_Y + SEAM_BAND, y)
+}
+
+// Temperament: how still the medium is at a given depth. 0 at the surface —
+// the shown self is allowed to drift — rising smoothly to 1 at bedrock, where
+// the deepest layer barely moves at all. The strata don't just look different;
+// they hold differently. Floors scale every AMBIENT amplitude by
+// (1 − 0.65 × stillnessAt(y)). Pointer responses are exempt — they follow the
+// pointer doctrine (soft above the seam, exact or absent below), not the
+// temperament.
+export function stillnessAt(y: number): number {
+  return smoothstep(0, 1, (Y_SURFACE - y) / (Y_SURFACE - Y_BEDROCK))
 }

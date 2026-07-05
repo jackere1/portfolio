@@ -40,9 +40,16 @@ past a fixed, rendered cage. You pass distinct **floors** (stages), cross a **th
 (the boundary) from the drifting upper water into the still, locked deep, and settle on
 the **foundation** at the bottom — which is the colophon, the bedrock the dive rests on.
 
+The floors are **strata of the owner**, outer self → inner self. The surface is the
+appearance — an open blue-sky steppe with a grazing herd, visual, nearly wordless, built
+to be seen (no gate — the owner removed it). Each floor down is a layer closer
+to the true nature: values, concerns, worries, carved as scenarios in his own voice,
+wordiest at the bottom. The thermocline is where the performance stops: above it the shown
+self (allowed to drift), below it the one not permitted to lie.
+
 - **The capsule** is fixed (the foreground that never moves — the rider, the constant).
 - **The medium** (the shaft and its floors) moves through it (real parallax, not drift).
-- **The descent is the argument**: from the guessing surface to the part that cannot lie.
+- **The descent is the argument**: from the shown surface to the part that cannot lie.
 
 Two speeds, always: the world drifts slow and soft; foreground responses (reveals, the
 cursor, instruments) snap instantly with no easing. The contrast is deliberate.
@@ -95,10 +102,22 @@ The 3D scene (`Scene` in the same file): `CameraRig` · `Environment` · `Shaft`
   each cell's **stage**. Stages are compact; the rest of each cell is travel void.
 - `components/world/seam.tsx` — the **thermocline**: a thin cool-blue beam at `SEAM_Y`. A
   line, never a plane (a plane washes the view — that was a mistake we fixed). The camera
-  crosses it once, aligned to the Boundary level.
+  crosses it once, aligned to the Threshold level.
+- `components/world/shaft-walls.tsx` — the walls are **strata in cross-section**: one
+  band per floor cell below ground, each a shade denser than the one above, a thin
+  sediment line at every boundary. Bands derive from `floors[]` — the geology always
+  matches the levels.
+- `components/world/grass.tsx` — **GPU grass** (`<GrassField>`). Tens of thousands of
+  instanced blades placed once; the wind lives in the **vertex shader** (one `uTime`
+  uniform + a pointer-parting uniform), so the CPU does nothing per blade. This is the
+  pattern to reach for whenever a floor wants dense animated geometry: animate in the
+  shader, never in a per-frame JS loop over instances. Lighting is cheap uniforms
+  (sun/ambient/tip), matched to the scene by the caller.
 - `lib/world-config.ts` — `Y_SURFACE`, `Y_BEDROCK`, `SEAM_Y`, `MAX_DEPTH`, the
   `progress→depth` mapping, `regionFactor(y)` (0 below the seam = locked, 1 above = drift),
-  and clamped drift amplitudes.
+  clamped drift amplitudes, and `stillnessAt(y)` — the **temperament gradient** (0 surface
+  drift → 1 bedrock stillness). Every floor receives it as `FloorProps.stillness`; scale
+  ambient amplitudes by `(1 − 0.65 × stillness)` whenever a scene's motion is touched.
 - `lib/floors.ts` — derives each floor **cell** from `SECTION_RANGES` so the visible floor
   always matches the level in the HUD. Each floor gets a compact **stage band** (`yTop/
   yBottom/yCenter/height`) inside its cell; `center`-anchored stages float mid-cell,
@@ -120,8 +139,9 @@ The 3D scene (`Scene` in the same file): `CameraRig` · `Environment` · `Shaft`
   That consistency is the meaning — text must never again be scattered across 3D space.
 
 ### The proof (artifacts) and the truth (colophon)
-- `components/ui/proof-reveal.tsx` — surface → proof. Open by default now (we have the
-  space); toggles instantly, no easing.
+- `components/ui/proof-reveal.tsx` — surface → proof. Open by default (`Room.revealOpen`
+  overrides; only the surface floor starts closed — the appearance keeps its words few);
+  toggles instantly, no easing.
 - `components/artifacts/*.tsx` — one concrete artifact per level that *demonstrates*
   rather than states (a gate that refuses, a ledger that sums to zero, Mongolian
   morphology, an audible cadence, a snapping reflex target, kill-dates, live UB time).
@@ -129,8 +149,9 @@ The 3D scene (`Scene` in the same file): `CameraRig` · `Environment` · `Shaft`
   The real record, pulled from `lib/data.ts`. The one place that states plain fact.
 
 ### Content
-- `lib/content.ts` — the **surface**: the seven levels' claims (the owner's voice), the
-  artifact each one reveals, the held-line/colophon copy. `[SPECIFIC]` marks placeholders
+- `lib/content.ts` — the **strata**: the seven floors' confessions (the owner's voice,
+  outer → inner), the artifact each one reveals, the held-line/colophon copy. `[SPECIFIC]`
+  marks placeholders
   awaiting the owner's real material (named dead projects + real kill-dates, the games,
   the chord, **verified** Mongolian morphology — the гэр example is a guess and on a site
   about not lying it must be checked before launch).
@@ -168,10 +189,52 @@ To add a floor: add a room to `lib/content.ts` + a range to `SECTION_RANGES`
 (`hooks/use-scroll-store.ts`), create the scene file, register it in the `sceneFor` map in
 `shaft.tsx`, and add an artifact if it reveals one. `lib/floors.ts` derives the rest.
 
-The seven stages today, each its own world: **gate** (a barred lock), **boundary** (order
-vs drift at the thermocline), **language** (vertical script columns), **music** (resonating
-strings), **reflex** (a snapping targeting grid), **kill-dates** (a graveyard of dated
-markers), **place** (Ulaanbaatar at night). They are first passes — detail them.
+### The charter — each floor's foundation, and what to build on it
+
+The foundations are laid: each floor has its claim, its stage, its interaction (the
+pointer doctrine), and its temperament (`stillness`). What each floor still owes is its
+**scenario** — one concrete moment, staged in the medium, that argues the claim without
+saying it. Detail one floor per session; each is an isolated scene file. The scenario is
+shown, never captioned.
+
+1. **surface** — the appearance. Claim: what's shown is composed, calm, indifferent to
+   being watched. Built (`floors/surface.tsx`): an open green steppe under the eternal
+   blue sky — undulating textured ground, a dense **GPU grass** field rippling in the
+   wind (`<GrassField>`, vertex-shader wind), a **snow-capped mountain range** on the
+   horizon (one vertex-coloured cone geometry reused per peak — rock→snow up its height,
+   no z-fighting), distant hazy hills, drifting clouds + **cloud shadows** crawling over
+   the grass, a far flock, a worn trail, and a small horse **herd** grazing the mid-field
+   (each `<GrazingHorse>` self-animates: graze drift, head nod, tail swish, contact
+   shadow). Blue-sky daylight + a depth-fading hemisphere fill (see `sky-dome.tsx` +
+   `environment.tsx` surface stop; keep `uSunDir` == `KEY_POS[0]`). There is deliberately
+   **no gate** — the owner removed it; do not reintroduce a barrier. Rich elements gate on
+   `rich = full || reducedTier` so integrated-GPU Chrome ("reduced" tier) still gets the
+   full scene; only "minimal" is stripped. Build on: real cast shadows on capable tiers,
+   seasonal light, richer herd behaviour — never clutter; the elegance is the openness.
+2. **threshold** — where the performance stops. Claim: one self performs, one keeps the
+   books. Scenario: the crossing itself — as the cab passes `SEAM_Y`, the drifting cubes
+   above complete into the locked lattice below in one legible instant. Build on: the
+   moment of crossing (the medium acknowledging the lock, once, exactly at the line).
+3. **reflex** — before thought. Claim: under pressure you fall to what you drilled.
+   Scenario: a round — a target called, hit at cadence, confirmed; the one mechanic that
+   fires without deliberation. Build on: round structure (call → snap → confirm), and the
+   `[SPECIFIC]` games named in the artifact.
+4. **ear** — knowing before naming. Claim: felt first, checked second. Scenario: a
+   suspension held a beat too long, then released — the cadence the ear closed early.
+   Build on: tie the 3D strings to the artifact's Web Audio — pluck the medium, hear the
+   interval in the cab (`[SPECIFIC]` the real chord).
+5. **tongue** — the carried language. Claim/worry: a language machines treat as noise
+   goes quiet where they run. Scenario: a word written stroke by stroke down a column —
+   then a search pass sweeping the columns and finding nothing. Build on: the
+   write-then-miss cycle; verified morphology (`[SPECIFIC]`).
+6. **oath** — against self-deception. Claim: decide what failure looks like before love
+   does. Scenario: a burial on schedule — one slab standing at its date, then lying down,
+   never dramatized; the field is the record. Build on: slabs carrying the real dates
+   (`[SPECIFIC]` the bets).
+7. **place** — the deepest worry and its ground. Claim: honest work doesn't need the
+   map's permission. Scenario: the city going about itself — windows cycling, smoke
+   rising, no one performing for the visitor; only the benchmark answers, once. Build on:
+   the city's slow life; the colophon latch stays the only exit.
 
 ---
 
@@ -181,14 +244,34 @@ markers), **place** (Ulaanbaatar at night). They are first passes — detail the
   `Math.random()` in this repo is a bug, not a shortcut.
 - **No copy that explains the concept.** Evocative, never expository. If it narrates the
   metaphor, cut it.
+- **Understatement over aphorism.** The voice is quiet. If a line sounds quotable, proud,
+  or like a movie trailer, flatten it or cut it — the scene and the artifact carry the
+  claim. Words earn their place only where the visual can't speak; the deeper the floor,
+  the more they're allowed to say, never the louder.
 - **Two speeds.** Scroll-/depth-driven = soft. Pointer-/keyboard-driven = instant
   (`transition: none`). Don't ease a foreground response.
+- **The pointer doctrine (in the medium).** Above the seam a floor may respond to the
+  cursor softly, lagging, eased — the performer flirts (surface wind, threshold lean).
+  Below the seam a response is instant and frame-exact (reflex snap, ear pluck, tongue
+  caret, the benchmark's single pulse) — or deliberately absent (oath; the city). Nothing
+  below the line eases toward the cursor. All pointer response stops under reduced motion.
 - **Reduced motion + mobile are first-class.** Every motion gates on `useReducedMotion()`;
   the CSS guard in `globals.css` kills animation under `prefers-reduced-motion`. The
   mobile fallback (`components/ui/mobile-fallback.tsx`) carries the *same* dive with CSS
   only (capsule frame, depth readout, the two regions, levels as `<details>`, the colophon).
 - **Performance is part of the aesthetic.** No heavy effect library for what a few lines of
   shader/canvas/CSS can do. Instance repeated geometry. Cap DPR.
+- **Tiers, and the software path.** `hooks/use-gpu-tier.ts` detects the GPU and picks a
+  `QualityConfig` (ultra/high/medium/low + `maxDpr`, wired into the `<Canvas dpr>`).
+  Crucially it detects **software rasterizers** (SwiftShader / llvmpipe) by renderer string
+  and forces the **low** tier — on software every pixel is drawn on the CPU, so fill-rate
+  (grass overdraw, DPR, transparent planes) is the enemy, not vertex count. Scale dense/
+  overdraw-heavy things down for low (the surface: fewer, shorter grass, no cloud planes,
+  `maxDpr` 0.65); keep the rich version for real GPUs. `?tier=ultra|high|medium|low` forces
+  a tier (testing on a software machine, or a power user). Measure real FPS on the software
+  path (a headless/SwiftShader browser) — don't assume. `window.__diveDiag` reports the
+  live decision; the DOM fallback prints it and, when WebGL is genuinely off, tells the
+  visitor how to enable it.
 - **The colophon is the only place that states fact.** Keep it flat, honest, undecorated.
 - **Keep the amber-on-navy geometric DNA.** Evolve it; don't replace it. Cool blue is the
   boundary/instrument note — never ambient haze.

@@ -42,7 +42,7 @@ export function NavOverlay() {
         const [start, end] = SECTION_RANGES[room.id as SectionName]
         const mid = (start + end) / 2
         const active = progress >= start && progress < end
-        const target = room.id === "gate" ? 0 : start + (end - start) * 0.3
+        const target = i === 0 ? 0 : start + (end - start) * 0.3
         return (
           <button
             key={room.id}

@@ -1,5 +1,5 @@
 import type React from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Space_Grotesk, Fraunces, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
@@ -22,28 +22,38 @@ const mono = Geist_Mono({
   display: "swap",
 })
 
+const description =
+  "Enkhbold Nyamdorj — a backend and systems engineer in Ulaanbaatar. " +
+  "The line between the part of a system allowed to guess and the part not permitted to lie."
+
 export const metadata: Metadata = {
+  metadataBase: new URL("https://encold.guru"),
   title: "Enkhbold Nyamdorj",
-  description:
-    "The personal site of Enkhbold Nyamdorj — built at night, in Ulaanbaatar.",
+  description,
   authors: [{ name: "Enkhbold Nyamdorj" }],
+  creator: "Enkhbold Nyamdorj",
   openGraph: {
     title: "Enkhbold Nyamdorj",
-    description:
-      "The personal site of Enkhbold Nyamdorj — built at night, in Ulaanbaatar.",
+    description,
     url: "https://encold.guru",
     siteName: "encold.guru",
+    locale: "en_US",
     type: "website",
   },
+  twitter: {
+    card: "summary",
+    title: "Enkhbold Nyamdorj",
+    description,
+  },
   icons: {
-    icon: [
-      {
-        url: "/icon.svg",
-        type: "image/svg+xml",
-      },
-    ],
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
     apple: "/icon.svg",
   },
+}
+
+export const viewport: Viewport = {
+  themeColor: "#0a1120",
+  colorScheme: "dark",
 }
 
 export default function RootLayout({

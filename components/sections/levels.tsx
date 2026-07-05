@@ -65,7 +65,7 @@ export function Levels() {
             </div>
             <p className="lead mt-4">{room.lead}</p>
             {room.body && <p className="voice mt-4">{room.body}</p>}
-            <ProofReveal label={room.reveal} defaultOpen>
+            <ProofReveal label={room.reveal} defaultOpen={room.revealOpen ?? true}>
               <Artifact />
             </ProofReveal>
           </div>

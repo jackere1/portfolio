@@ -4,6 +4,7 @@ import { useEffect, useState, type ComponentType } from "react"
 import { rooms, heldLine, place, type ArtifactKind } from "@/lib/content"
 import { MAX_DEPTH, THERMOCLINE_DEPTH } from "@/lib/world-config"
 import { useScrollStore } from "@/hooks/use-scroll-store"
+import { diveDiag } from "@/hooks/use-gpu-tier"
 import { Colophon } from "@/components/ui/colophon"
 import { Gate } from "@/components/artifacts/gate"
 import { Ledger } from "@/components/artifacts/ledger"
@@ -46,6 +47,9 @@ export function MobileFallback() {
 
   const crossed = depth >= THERMOCLINE_DEPTH
   const atFloor = depth >= MAX_DEPTH - 6
+  // Only prompt to enable 3D when WebGL was actually blocked on a capable
+  // browser — not when the fallback is intentional (touch / phone / tiny window).
+  const webglBlocked = diveDiag.reason.startsWith("WebGL")
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-[oklch(0.06_0.02_260)] text-[oklch(0.92_0.01_80)]">
@@ -108,13 +112,15 @@ export function MobileFallback() {
                 <span className="level-num">
                   {String(i + 1).padStart(2, "0")}
                 </span>
-                <span className="level-of">/ 07</span>
+                <span className="level-of">
+                  / {String(rooms.length).padStart(2, "0")}
+                </span>
                 <span className="level-rule" />
                 <span className="level-name">{room.id}</span>
               </div>
               <p className="lead mt-3">{room.lead}</p>
               {room.body && <p className="voice mt-4">{room.body}</p>}
-              <details className="room-details mt-5" open>
+              <details className="room-details mt-5" open={room.revealOpen ?? true}>
                 <summary className="reveal-control">
                   <span aria-hidden="true">▸ </span>
                   {room.reveal}
@@ -127,6 +133,42 @@ export function MobileFallback() {
           )
         })}
       </main>
+
+      {/* Below the levels: a prompt to enable the 3D, but ONLY when WebGL was
+          genuinely blocked (a capable browser with acceleration off) — never a
+          nag on real touch/phone visitors, for whom this CSS dive is the point. */}
+      <div className="relative z-10 pb-16 text-center">
+        {webglBlocked ? (
+          <div className="mx-auto max-w-md px-7">
+            <p className="font-mono text-[0.68rem] tracking-[0.16em] text-[oklch(0.72_0.13_250/0.9)]">
+              THIS BROWSER ISN’T RENDERING 3D
+            </p>
+            <p className="mx-auto mt-3 max-w-sm font-mono text-[0.6rem] leading-[1.7] tracking-[0.08em] text-[oklch(0.58_0.02_80/0.8)]">
+              WebGL is switched off here, so the full dive can’t run — everything
+              above still works. To see it: turn on{" "}
+              <span className="text-[oklch(0.7_0.02_80/0.95)]">
+                “Use graphics acceleration when available”
+              </span>{" "}
+              in your browser’s settings (System), then reload. On Linux you may
+              also need{" "}
+              <span className="text-[oklch(0.7_0.02_80/0.95)]">chrome://flags</span>{" "}
+              → “Override software rendering list”.
+            </p>
+          </div>
+        ) : (
+          <a
+            href="?dive"
+            className="font-mono text-[0.6rem] tracking-[0.22em] text-[oklch(0.62_0.16_250/0.6)] hover:text-[oklch(0.75_0.16_250/0.95)]"
+          >
+            descend in 3d →
+          </a>
+        )}
+        <p className="mx-auto mt-6 max-w-md px-7 font-mono text-[0.5rem] leading-relaxed tracking-[0.12em] text-[oklch(0.44_0.02_80/0.55)]">
+          webgl: {diveDiag.webgl ? "yes" : "no"} · gpu:{" "}
+          {diveDiag.renderer || "hidden"} · {diveDiag.reason}
+          {diveDiag.error ? ` (${diveDiag.error})` : ""}
+        </p>
+      </div>
 
       <Colophon />
     </div>

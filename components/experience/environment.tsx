@@ -7,7 +7,7 @@ import { useScrollStore } from "@/hooks/use-scroll-store"
 
 /**
  * The light of the descent. Three keyframes driven by depth:
- *   surface — Mongolian steppe at dawn (bright, natural, warm-cool daylight)
+ *   surface — Mongolian steppe under the eternal blue sky (bright clear daylight)
  *   ground  — the threshold, where daylight gives way to the enclosed interior
  *   deep    — the foundation, dark concrete lit only by the cab lamp
  *
@@ -20,24 +20,34 @@ import { useScrollStore } from "@/hooks/use-scroll-store"
 const GROUND_P = 0.2
 
 // Numeric stops: [surface, ground, deep].
-const FOG_NEAR = [14, 8, 4]
-const FOG_FAR = [120, 50, 16]
-const AMB_I = [0.55, 0.2, 0.07]
-const KEY_I = [0.9, 0.3, 0.12]
-const FILL_I = [0.1, 0.14, 0.14]
+const FOG_NEAR = [22, 8, 4]
+const FOG_FAR = [170, 50, 16]
+const AMB_I = [0.82, 0.2, 0.07]
+const KEY_I = [1.25, 0.3, 0.12]
+const FILL_I = [0.3, 0.14, 0.14]
 const LAMP_I = [0.6, 2.4, 3.4]
+// A sky→ground hemisphere fill for the open-air surface — blue bounce from above,
+// warm ground bounce from below. Fades to nothing underground, where the shaft
+// is a sealed box with no sky.
+const HEMI_I = [0.5, 0.12, 0]
+// KEY_POS[0] is the daytime sun, high and slightly in front so it lights the
+// faces the camera sees. It must match uSunDir in components/world/sky-dome.tsx:
+// same sun, same sky.
 const KEY_POS: [number, number, number][] = [
-  [12, 6, 8],
+  [4, 12, -5],
   [8, 14, 6],
   [5, 20, 5],
 ]
 
 const col = (hex: string) => new THREE.Color(hex)
-const BG = ["#9bb0cf", "#2a2418", "#0a0a0c"].map(col)
-const FOG = ["#d8b48c", "#14100a", "#08080a"].map(col)
-const AMB = ["#e8d8c0", "#c8a050", "#c8a050"].map(col)
-const KEY = ["#ffd9a0", "#e8b040", "#e8b040"].map(col)
-const FILL = ["#9fb8d8", "#4060c0", "#4060c0"].map(col)
+// BG[0]/FOG[0] are the surface air. FOG[0] must match uFog in
+// components/world/sky-dome.tsx so the hills at the fog limit melt into the
+// sky band above them — one continuous blue haze, dome to ground.
+const BG = ["#a6c3dc", "#2a2418", "#0a0a0c"].map(col)
+const FOG = ["#aec6da", "#14100a", "#08080a"].map(col)
+const AMB = ["#dfe9f4", "#c8a050", "#c8a050"].map(col)
+const KEY = ["#fff4de", "#e8b040", "#e8b040"].map(col)
+const FILL = ["#b4c8e4", "#4060c0", "#4060c0"].map(col)
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 
@@ -52,6 +62,7 @@ export function Environment() {
   const ambRef = useRef<THREE.AmbientLight>(null)
   const keyRef = useRef<THREE.DirectionalLight>(null)
   const fillRef = useRef<THREE.DirectionalLight>(null)
+  const hemiRef = useRef<THREE.HemisphereLight>(null)
   const lampRef = useRef<THREE.PointLight>(null)
 
   // Persistent colors mutated each frame (the background reference is reused).
@@ -90,6 +101,9 @@ export function Environment() {
       fillRef.current.intensity = lerp(FILL_I[i0], FILL_I[i1], t)
       fillRef.current.color.lerpColors(FILL[i0], FILL[i1], t)
     }
+    if (hemiRef.current) {
+      hemiRef.current.intensity = lerp(HEMI_I[i0], HEMI_I[i1], t)
+    }
     if (lampRef.current) {
       lampRef.current.intensity = lerp(LAMP_I[i0], LAMP_I[i1], t)
       lampRef.current.position.set(
@@ -105,6 +119,8 @@ export function Environment() {
       <ambientLight ref={ambRef} intensity={0.55} color="#e8d8c0" />
       <directionalLight ref={keyRef} position={[12, 6, 8]} intensity={0.9} color="#ffd9a0" />
       <directionalLight ref={fillRef} position={[-5, -10, 5]} intensity={0.1} color="#9fb8d8" />
+      {/* Outdoor sky/ground fill for the surface — off underground. */}
+      <hemisphereLight ref={hemiRef} args={["#9fc2e2", "#5a5236", 0.5]} />
 
       {/* The cab lamp — rides just ahead of the cab; the only light deep down. */}
       <pointLight ref={lampRef} intensity={0.6} distance={16} decay={2} color="#e8a020" />

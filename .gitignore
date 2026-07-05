@@ -9,3 +9,6 @@ dist
 .next
 
 tsconfig.tsbuildinfo
+
+# playwright-mcp session artifacts
+.playwright-mcp/

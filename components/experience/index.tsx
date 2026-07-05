@@ -46,6 +46,7 @@ export function Experience() {
   const lenisRef = useRef<Lenis | null>(null)
   const loaded = useScrollStore((s) => s.loaded)
   const setProgress = useScrollStore((s) => s.setProgress)
+  const { quality } = useGpuTier()
 
   useEffect(() => {
     const lenis = new Lenis({
@@ -95,7 +96,7 @@ export function Experience() {
             stencil: false,
             depth: true,
           }}
-          dpr={[1, 1.5]}
+          dpr={[1, quality.maxDpr]}
           camera={{ position: [0, 12, 8], fov: 60, near: 0.1, far: 200 }}
           style={{
             background: "#9bb0cf",

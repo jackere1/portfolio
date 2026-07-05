@@ -9,6 +9,11 @@ import {
 import { useReducedMotion } from "@/hooks/use-reduced-motion"
 import { Y_SURFACE, Y_BEDROCK } from "@/lib/world-config"
 
+// The deepest stratum — the fallback when progress sits at exactly 1.0, past
+// every half-open [start, end) range.
+const SECTION_NAMES = Object.keys(SECTION_RANGES) as SectionName[]
+const LAST_SECTION = SECTION_NAMES[SECTION_NAMES.length - 1]
+
 /**
  * The dive. The camera descends a single vertical axis — scroll lowers you, the
  * medium rises past. No swooping path: you're sealed in a capsule looking out,
@@ -43,7 +48,7 @@ export function CameraRig() {
         break
       }
     }
-    if (progress >= 0.91) setActiveSection("place")
+    if (progress >= SECTION_RANGES[LAST_SECTION][0]) setActiveSection(LAST_SECTION)
 
     if (!hasLoaded.current) {
       hasLoaded.current = true

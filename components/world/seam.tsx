@@ -10,7 +10,7 @@ import { useReducedMotion } from "@/hooks/use-reduced-motion"
 /**
  * The seam — the world-space boundary the camera crosses once. A thin cool-blue
  * slab at y = SEAM_Y: razor-sharp edge-on (it lines up with the held line in
- * the Boundary room), a faint luminous membrane when seen at an angle. Soft
+ * the Threshold room), a faint luminous membrane when seen at an angle. Soft
  * additive core, no hard 1-texel edge, so it never shimmers.
  */
 export function Seam() {

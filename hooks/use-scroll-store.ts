@@ -1,14 +1,14 @@
 import { create } from "zustand"
 
-// The seven rooms, top → bottom. The seam (lib/world-config SEAM_Y) is crossed
-// in the "boundary" room.
+// The seven strata, top → bottom — outer self first, inner self deepest. The
+// seam (lib/world-config SEAM_Y) is crossed in the "threshold" room.
 export type SectionName =
-  | "gate"
-  | "boundary"
-  | "language"
-  | "music"
+  | "surface"
+  | "threshold"
   | "reflex"
-  | "killdates"
+  | "ear"
+  | "tongue"
+  | "oath"
   | "place"
 
 interface ScrollState {
@@ -35,19 +35,19 @@ interface ScrollState {
  * each room is active when the camera arrives at its keyframe (≈ index/6).
  */
 export const SECTION_RANGES: Record<SectionName, [number, number]> = {
-  gate: [0, 0.09],
-  boundary: [0.09, 0.25],
-  language: [0.25, 0.42],
-  music: [0.42, 0.58],
-  reflex: [0.58, 0.75],
-  killdates: [0.75, 0.91],
+  surface: [0, 0.09],
+  threshold: [0.09, 0.25],
+  reflex: [0.25, 0.42],
+  ear: [0.42, 0.58],
+  tongue: [0.58, 0.75],
+  oath: [0.75, 0.91],
   place: [0.91, 1.0],
 }
 
 export const useScrollStore = create<ScrollState>((set) => ({
   progress: 0,
   velocity: 0,
-  activeSection: "gate",
+  activeSection: "surface",
   loaded: false,
   colophonOpen: false,
   setProgress: (p) => set({ progress: p }),
