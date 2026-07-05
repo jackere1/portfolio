@@ -1,7 +1,11 @@
 "use client"
 
 import { Canvas } from "@react-three/fiber"
-import { Preload, PerformanceMonitor } from "@react-three/drei"
+import {
+  Preload,
+  PerformanceMonitor,
+  Environment as HdriEnvironment,
+} from "@react-three/drei"
 import { Suspense, useEffect, useRef, useState } from "react"
 import Lenis from "lenis"
 import { CameraRig } from "./camera-rig"
@@ -35,6 +39,12 @@ function Scene({ setDpr }: { setDpr: (dpr: number) => void }) {
       />
       <CameraRig />
       <Environment />
+      {/* Real image-based lighting from a clear-sky HDRI — lights the surface's
+          models/ground realistically. Lighting only (no background); its
+          intensity is faded to nothing underground in environment.tsx. */}
+      {quality.textureMaps.length > 0 && (
+        <HdriEnvironment files="/hdri/sky_1k.hdr" />
+      )}
       <SkyDome />
 
       {/* The shaft — a stack of distinct floor stages you descend through,

@@ -22,14 +22,18 @@ const GROUND_P = 0.2
 // Numeric stops: [surface, ground, deep].
 const FOG_NEAR = [22, 8, 4]
 const FOG_FAR = [170, 50, 16]
-const AMB_I = [0.82, 0.2, 0.07]
-const KEY_I = [1.25, 0.3, 0.12]
-const FILL_I = [0.3, 0.14, 0.14]
+// The surface now gets most of its soft/sky light from the HDRI (image-based),
+// so the artificial ambient and hemisphere are pulled back there to avoid
+// double-lighting; the directional key still throws the sharp sun.
+const AMB_I = [0.42, 0.2, 0.07]
+const KEY_I = [1.1, 0.3, 0.12]
+const FILL_I = [0.18, 0.14, 0.14]
 const LAMP_I = [0.6, 2.4, 3.4]
-// A sky→ground hemisphere fill for the open-air surface — blue bounce from above,
-// warm ground bounce from below. Fades to nothing underground, where the shaft
-// is a sealed box with no sky.
-const HEMI_I = [0.5, 0.12, 0]
+// Sky→ground hemisphere fill, now light (the HDRI does most of it). Off underground.
+const HEMI_I = [0.2, 0.12, 0]
+// HDRI environment (image-based) intensity by depth: full at the surface, gone
+// in the sealed deep. Drives scene.environmentIntensity.
+const ENV_I = [0.95, 0.28, 0]
 // KEY_POS[0] is the daytime sun, high and slightly in front so it lights the
 // faces the camera sees. It must match uSunDir in components/world/sky-dome.tsx:
 // same sun, same sky.
@@ -104,6 +108,9 @@ export function Environment() {
     if (hemiRef.current) {
       hemiRef.current.intensity = lerp(HEMI_I[i0], HEMI_I[i1], t)
     }
+    // Fade the HDRI image-based lighting with depth (r163+ scalar).
+    ;(scene as THREE.Scene & { environmentIntensity: number }).environmentIntensity =
+      lerp(ENV_I[i0], ENV_I[i1], t)
     if (lampRef.current) {
       lampRef.current.intensity = lerp(LAMP_I[i0], LAMP_I[i1], t)
       lampRef.current.position.set(

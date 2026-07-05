@@ -9,6 +9,7 @@ import { makeRng, seededRange, clamp } from "@/lib/prng"
 import { PbrMaterial } from "@/lib/textures"
 import { GrassField } from "@/components/world/grass"
 import { GrazingHorse } from "@/components/world/horse"
+import { Rocks } from "@/components/world/rocks"
 import { FLOOR_ACTIVE_MARGIN, type FloorProps } from "@/lib/floors"
 
 const TAU = Math.PI * 2
@@ -111,14 +112,6 @@ interface Cloud {
   opacity: number
 }
 
-interface Stone {
-  x: number
-  z: number
-  gy: number
-  s: number
-  rot: number
-}
-
 interface Bird {
   cx: number
   cz: number
@@ -181,7 +174,7 @@ export function FloorSurface({ yTop, yBottom, yCenter }: FloorProps) {
   // from "as many as possible" to "lush but smooth" — weaker GPUs feel the fill.
   const bladeCount = full ? 15000 : reducedTier ? 7000 : 2200
   const grassHeightScale = rich ? 1 : 0.55
-  const stoneCount = full ? 8 : reducedTier ? 5 : 3
+  const rockCount = full ? 7 : reducedTier ? 5 : 0
   const herdCount = full ? 7 : reducedTier ? 5 : 3
 
   // The land and its cover — one shared height field, one shared mottling.
@@ -237,23 +230,11 @@ export function FloorSurface({ yTop, yBottom, yCenter }: FloorProps) {
   const grassAmbient = useMemo(() => new THREE.Color("#54687e"), [])
   const grassTip = useMemo(() => new THREE.Color("#c9b46a"), [])
 
-  // Scattered stones along the path edges — small, dark, planted on the terrain.
-  const stones = useMemo<Stone[]>(() => {
-    const rng = makeRng("floor-surface-stones")
-    return Array.from({ length: stoneCount }, () => {
-      // Cluster just off the corridor, in the near field.
-      const side = rng() < 0.5 ? -1 : 1
-      const x = side * seededRange(rng, 1.6, 3.8)
-      const z = seededRange(rng, 0, 4)
-      return {
-        x,
-        z,
-        gy: groundY + terrainHeight(terrain, x, z),
-        s: seededRange(rng, 0.07, 0.15),
-        rot: seededRange(rng, 0, TAU),
-      }
-    })
-  }, [stoneCount, groundY, terrain])
+  // Where the boulders scatter — near/mid field, off the central corridor.
+  const rockBounds = useMemo(
+    () => ({ xMin: -8, xMax: 8, zMin: -6, zMax: 4 }),
+    []
+  )
 
   // A small herd grazing the mid-field — kept right of centre and back from the
   // camera so it never crowds the level's text, facing mostly one way like a
@@ -314,8 +295,8 @@ export function FloorSurface({ yTop, yBottom, yCenter }: FloorProps) {
     g.translate(0, 0.5, 0)
     const pos = g.attributes.position
     const colors = new Float32Array(pos.count * 3)
-    const rock = new THREE.Color("#66727f")
-    const snow = new THREE.Color("#e9f1f8")
+    const rock = new THREE.Color("#5c6672")
+    const snow = new THREE.Color("#b9c6d4")
     const c = new THREE.Color()
     for (let i = 0; i < pos.count; i++) {
       c.copy(rock).lerp(snow, smoothstep(0.52, 0.74, pos.getY(i)))
@@ -522,20 +503,6 @@ export function FloorSurface({ yTop, yBottom, yCenter }: FloorProps) {
     return { geo, base, drift, n }
   }, [rich, full, groundY])
 
-  // Plant the stones once.
-  const stonesRef = useRef<THREE.InstancedMesh>(null)
-  useEffect(() => {
-    if (!stonesRef.current) return
-    for (let i = 0; i < stones.length; i++) {
-      const s = stones[i]
-      dummy.position.set(s.x, s.gy + s.s * 0.3, s.z)
-      dummy.rotation.set(s.rot * 0.3, s.rot, s.rot * 0.2)
-      dummy.scale.set(s.s, s.s * 0.7, s.s)
-      dummy.updateMatrix()
-      stonesRef.current.setMatrixAt(i, dummy.matrix)
-    }
-    stonesRef.current.instanceMatrix.needsUpdate = true
-  }, [stones, dummy])
 
   // Initial bird placement, so under reduced motion the flock hangs at rest.
   useEffect(() => {
@@ -752,12 +719,15 @@ export function FloorSurface({ yTop, yBottom, yCenter }: FloorProps) {
         </instancedMesh>
       )}
 
-      {/* Stones scattered along the path edges. */}
-      {stoneCount > 0 && (
-        <instancedMesh ref={stonesRef} args={[undefined, undefined, stoneCount]}>
-          <dodecahedronGeometry args={[1, 0]} />
-          <meshStandardMaterial color="#6a5f52" roughness={0.85} metalness={0} />
-        </instancedMesh>
+      {/* Real PBR boulders scattered in the near/mid field (rich tier only —
+          the model's textures are too heavy to justify on the software path). */}
+      {rockCount > 0 && (
+        <Rocks
+          seed="floor-surface"
+          count={rockCount}
+          bounds={rockBounds}
+          heightAt={heightAt}
+        />
       )}
 
       {/* The herd — horses grazing the mid-field, indifferent to the visitor. */}

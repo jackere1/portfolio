@@ -113,6 +113,16 @@ The 3D scene (`Scene` in the same file): `CameraRig` · `Environment` · `Shaft`
   pattern to reach for whenever a floor wants dense animated geometry: animate in the
   shader, never in a per-frame JS loop over instances. Lighting is cheap uniforms
   (sun/ambient/tip), matched to the scene by the caller.
+- **Real CC0 assets over procedural geometry where it earns the GPU** — the standing
+  direction for the surface. `components/world/horse.tsx` (a glTF horse, GPU morph
+  animation, cloned + coat-tinted per animal) and `components/world/rocks.tsx` (Poly
+  Haven PBR boulders, instanced) load from `public/models/` via drei `useGLTF`.
+  `public/hdri/sky_1k.hdr` gives **image-based lighting** (drei `<Environment>` in
+  `experience/index.tsx`, gated off the software tier), faded to nothing underground via
+  `scene.environmentIntensity` in `environment.tsx`. Source Poly Haven models with their
+  `https://api.polyhaven.com/files/<slug>` API — the `gltf.<res>.gltf.include` map lists
+  the real `.bin` + texture URLs (the paths inside the gltf don't match the CDN). Heavy
+  PBR models are rich-tier only; keep the software path light.
 - `lib/world-config.ts` — `Y_SURFACE`, `Y_BEDROCK`, `SEAM_Y`, `MAX_DEPTH`, the
   `progress→depth` mapping, `regionFactor(y)` (0 below the seam = locked, 1 above = drift),
   clamped drift amplitudes, and `stillnessAt(y)` — the **temperament gradient** (0 surface
