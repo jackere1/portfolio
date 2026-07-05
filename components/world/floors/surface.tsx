@@ -76,42 +76,6 @@ function dryness(p: Patch, x: number, z: number): number {
   )
 }
 
-interface Hill {
-  x: number
-  z: number
-  r: number
-}
-
-interface Mountain {
-  x: number
-  z: number
-  r: number
-  h: number
-}
-
-interface ShadowPatch {
-  x: number
-  z: number
-  w: number
-  d: number
-  amp: number
-  period: number
-  phase: number
-  opacity: number
-}
-
-interface Cloud {
-  x: number
-  y: number
-  z: number
-  w: number
-  h: number
-  amp: number
-  period: number
-  phase: number
-  opacity: number
-}
-
 interface Bird {
   cx: number
   cz: number
@@ -151,10 +115,7 @@ const HORSE_COATS = ["#4a3826", "#3a2c1e", "#5a4632", "#2a221c", "#6a5c4a"]
 export function FloorSurface({ yTop, yBottom, yCenter }: FloorProps) {
   const reduced = useReducedMotion()
   const { quality } = useGpuTier()
-  const cloudsRef = useRef<THREE.Group>(null)
-  const bankRef = useRef<THREE.Group>(null)
   const birdsRef = useRef<THREE.InstancedMesh>(null)
-  const shadowRef = useRef<THREE.Group>(null)
   const dummy = useMemo(() => new THREE.Object3D(), [])
 
   const groundY = yBottom
@@ -172,8 +133,10 @@ export function FloorSurface({ yTop, yBottom, yCenter }: FloorProps) {
   // GPU grass — vertex-shader wind. The count is a FILL-RATE choice: every blade
   // is rasterized, so density (not animation) is what costs frames. Tuned down
   // from "as many as possible" to "lush but smooth" — weaker GPUs feel the fill.
-  const bladeCount = full ? 15000 : reducedTier ? 7000 : 2200
-  const grassHeightScale = rich ? 1 : 0.55
+  // A modest, short foreground fringe only — the sharp ground texture and the
+  // photographed field carry the grass; the 3D blades just add life underfoot.
+  const bladeCount = full ? 5000 : reducedTier ? 3000 : 1500
+  const grassHeightScale = rich ? 0.78 : 0.5
   const rockCount = full ? 7 : reducedTier ? 5 : 0
   const herdCount = full ? 7 : reducedTier ? 5 : 3
 
@@ -259,107 +222,6 @@ export function FloorSurface({ yTop, yBottom, yCenter }: FloorProps) {
     })
   }, [herdCount, groundY, terrain])
 
-  const hills = useMemo<Hill[]>(() => {
-    const rng = makeRng("floor-surface-hills")
-    // Pushed to the true horizon and kept modest so no near edge sprawls into
-    // the field as a dark patch — distant ridges, not blobs on the grass.
-    return Array.from({ length: 6 }, (_, i) => ({
-      x: seededRange(rng, -26, 26),
-      z: -34 - i * 6 - seededRange(rng, 0, 8),
-      r: seededRange(rng, 8, 13),
-    }))
-  }, [])
-
-  // Snow-capped mountains far beyond the hills — a whole range strung across the
-  // horizon, ice on the peaks. Small and far so they read as distant grandeur,
-  // not a pyramid in the field; hazed by distance fog into the blue.
-  const mountains = useMemo<Mountain[]>(() => {
-    const rng = makeRng("floor-surface-mountains")
-    const n = full ? 8 : 5
-    // Spread evenly across the horizon (with jitter) so they read as a whole
-    // range, not a single central peak; depth varies so some sit farther and
-    // hazier than others.
-    return Array.from({ length: n }, (_, i) => ({
-      x: -58 + (i / (n - 1)) * 116 + seededRange(rng, -7, 7),
-      z: -60 - seededRange(rng, 0, 18),
-      r: seededRange(rng, 11, 15),
-      h: seededRange(rng, 10, 14),
-    }))
-  }, [full])
-
-  // One unit cone, vertex-coloured rock→snow up its height, reused (scaled) for
-  // every peak. A single mesh per mountain — no coincident cap cone to z-fight,
-  // just a clean snow line that catches the daylight.
-  const mountainGeo = useMemo(() => {
-    const g = new THREE.ConeGeometry(1, 1, 7, 4)
-    g.translate(0, 0.5, 0)
-    const pos = g.attributes.position
-    const colors = new Float32Array(pos.count * 3)
-    const rock = new THREE.Color("#5c6672")
-    const snow = new THREE.Color("#b9c6d4")
-    const c = new THREE.Color()
-    for (let i = 0; i < pos.count; i++) {
-      c.copy(rock).lerp(snow, smoothstep(0.52, 0.74, pos.getY(i)))
-      colors[i * 3] = c.r
-      colors[i * 3 + 1] = c.g
-      colors[i * 3 + 2] = c.b
-    }
-    g.setAttribute("color", new THREE.BufferAttribute(colors, 3))
-    return g
-  }, [])
-
-  // Cloud shadows — soft dark patches drifting across the sward, the one thing
-  // that makes the wind visible on the ground. Slow, clamped, cheap.
-  const cloudShadows = useMemo<ShadowPatch[]>(() => {
-    if (!rich) return []
-    const rng = makeRng("floor-surface-cloudshadows")
-    return Array.from({ length: full ? 4 : 3 }, () => ({
-      x: seededRange(rng, -8, 8),
-      z: seededRange(rng, -14, -1),
-      w: seededRange(rng, 7, 13),
-      d: seededRange(rng, 5, 9),
-      amp: seededRange(rng, 4, 8),
-      period: seededRange(rng, 34, 64),
-      phase: seededRange(rng, 0, TAU),
-      opacity: seededRange(rng, 0.1, 0.18),
-    }))
-  }, [full, rich])
-
-  // Drifting clouds — on any real GPU; skipped only on the weakest tier.
-  const clouds = useMemo<Cloud[]>(() => {
-    if (!rich) return []
-    const rng = makeRng("floor-surface-clouds")
-    return Array.from({ length: full ? 4 : 3 }, () => ({
-      x: seededRange(rng, -12, 12),
-      y: groundY + seededRange(rng, 4.0, 5.4),
-      z: seededRange(rng, -34, -26),
-      w: seededRange(rng, 9, 15),
-      h: seededRange(rng, 2.2, 3.4),
-      amp: seededRange(rng, 0.9, 1.5),
-      period: seededRange(rng, 150, 320),
-      phase: seededRange(rng, 0, TAU),
-      opacity: seededRange(rng, 0.06, 0.1),
-    }))
-  }, [full, groundY])
-
-  // A low cloud bank sitting on the horizon behind the hills — wider, fainter,
-  // heavier than the drifting high clouds. Full tier only.
-  const bank = useMemo<Cloud[]>(() => {
-    if (!rich) return []
-    const rng = makeRng("floor-surface-bank")
-    return Array.from({ length: full ? 5 : 4 }, (_, i) => ({
-      x: -18 + i * 9 + seededRange(rng, -3, 3),
-      y: groundY + seededRange(rng, 1.6, 2.8),
-      z: seededRange(rng, -44, -36),
-      w: seededRange(rng, 14, 20),
-      h: seededRange(rng, 3.0, 4.4),
-      amp: seededRange(rng, 0.5, 1.0),
-      period: seededRange(rng, 260, 460),
-      phase: seededRange(rng, 0, TAU),
-      opacity: seededRange(rng, 0.08, 0.14),
-    }))
-  }, [full, groundY])
-
   // A far flock, indifferent to the visitor: a closed loop high over the hills.
   const birds = useMemo<Bird[]>(() => {
     const rng = makeRng("floor-surface-birds")
@@ -375,24 +237,6 @@ export function FloorSurface({ yTop, yBottom, yCenter }: FloorProps) {
       bob: seededRange(rng, 0.2, 0.5),
     }))
   }, [full, groundY])
-
-  // A soft elliptical falloff so the cloud planes have no visible edges.
-  const cloudTex = useMemo(() => {
-    if (typeof document === "undefined") return null
-    const c = document.createElement("canvas")
-    c.width = 128
-    c.height = 64
-    const ctx = c.getContext("2d")
-    if (!ctx) return null
-    ctx.scale(1, 0.5)
-    const g = ctx.createRadialGradient(64, 64, 4, 64, 64, 60)
-    g.addColorStop(0, "rgba(232, 238, 244, 0.6)")
-    g.addColorStop(0.6, "rgba(214, 224, 234, 0.24)")
-    g.addColorStop(1, "rgba(214, 224, 234, 0)")
-    ctx.fillStyle = g
-    ctx.fillRect(0, 0, 128, 128)
-    return new THREE.CanvasTexture(c)
-  }, [])
 
   // The worn path — a soft-edged dirt strip fading in from the foreground and
   // dissolving into the field. Alpha in the texture; dirt tone in the material.
@@ -522,24 +366,6 @@ export function FloorSurface({ yTop, yBottom, yCenter }: FloorProps) {
     if (Math.abs(state.camera.position.y - yCenter) > FLOOR_ACTIVE_MARGIN) return
     const t = state.clock.elapsedTime
 
-    // High clouds drift laterally — clamped by construction, minutes-long periods.
-    if (cloudsRef.current && !reduced && clouds.length > 0) {
-      const kids = cloudsRef.current.children
-      for (let i = 0; i < clouds.length && i < kids.length; i++) {
-        const c = clouds[i]
-        kids[i].position.x = c.x + Math.sin((t * TAU) / c.period + c.phase) * c.amp
-      }
-    }
-
-    // The horizon bank drifts slower still.
-    if (bankRef.current && !reduced && bank.length > 0) {
-      const kids = bankRef.current.children
-      for (let i = 0; i < bank.length && i < kids.length; i++) {
-        const c = bank[i]
-        kids[i].position.x = c.x + Math.sin((t * TAU) / c.period + c.phase) * c.amp
-      }
-    }
-
     // The flock rounds its loop — slow, distant, never approaching.
     if (birdsRef.current && !reduced && birds.length > 0) {
       for (let i = 0; i < birds.length; i++) {
@@ -558,15 +384,6 @@ export function FloorSurface({ yTop, yBottom, yCenter }: FloorProps) {
       birdsRef.current.instanceMatrix.needsUpdate = true
     }
 
-    // Cloud shadows crawl across the sward — the wind made visible on the ground.
-    if (shadowRef.current && !reduced && cloudShadows.length > 0) {
-      const kids = shadowRef.current.children
-      for (let i = 0; i < cloudShadows.length && i < kids.length; i++) {
-        const s = cloudShadows[i]
-        kids[i].position.x = s.x + Math.sin((t * TAU) / s.period + s.phase) * s.amp
-      }
-    }
-
     // Pollen motes drift in the air — a gentle 3D wander around each rest point.
     if (motes && !reduced) {
       const arr = motes.geo.attributes.position.array as Float32Array
@@ -582,18 +399,21 @@ export function FloorSurface({ yTop, yBottom, yCenter }: FloorProps) {
 
   return (
     <group>
-      {/* The steppe — an undulating ground plane receding to the dawn horizon. */}
+      {/* The near ground — an undulating plane with a sharp, real grass PBR
+          texture (Poly Haven aerial_grass_rock, 2k albedo+normal+roughness). It
+          fogs into the HDRI's horizon so the foreground and the photographed
+          distance read as one field. */}
       <mesh
         geometry={groundGeo}
         position={[0, groundY, -22]}
         rotation={[-Math.PI / 2, 0, 0]}
       >
         <PbrMaterial
-          name="steppe-grass"
-          repeat={[18, 18]}
-          tint="#d8c89a"
+          name="aerial-grass"
+          repeat={[26, 26]}
+          tint="#eef0e2"
           flatColor="#5a6a3a"
-          flatRoughness={0.95}
+          flatRoughness={0.9}
         />
       </mesh>
 
@@ -616,96 +436,8 @@ export function FloorSurface({ yTop, yBottom, yCenter }: FloorProps) {
         </mesh>
       )}
 
-      {/* Cloud shadows crawling over the grass — soft, dark, drifting. */}
-      {softDarkTex !== null && cloudShadows.length > 0 && (
-        <group ref={shadowRef}>
-          {cloudShadows.map((s, i) => (
-            <mesh
-              key={i}
-              position={[s.x, groundY + 0.04, s.z]}
-              rotation={[-Math.PI / 2, 0, 0]}
-            >
-              <planeGeometry args={[s.w, s.d]} />
-              <meshBasicMaterial
-                map={softDarkTex}
-                color="#0a1408"
-                transparent
-                opacity={s.opacity}
-                depthWrite={false}
-              />
-            </mesh>
-          ))}
-        </group>
-      )}
-
-      {/* Snow-capped mountains — the range far beyond the hills, ice on the
-          peaks. Low-poly and hazed; grandeur without cost. */}
-      {mountains.map((m, i) => (
-        <mesh
-          key={i}
-          geometry={mountainGeo}
-          position={[m.x, groundY, m.z]}
-          scale={[m.r, m.h, m.r]}
-        >
-          <meshStandardMaterial vertexColors roughness={0.95} metalness={0} flatShading />
-        </mesh>
-      ))}
-
-      {/* Rolling hills on the horizon — caps of flattened spheres, a hazy
-          daylit green-brown so they read as distant ridges under the blue. */}
-      {hills.map((h, i) => (
-        <mesh key={i} position={[h.x, groundY - h.r * 0.2, h.z]} scale={[1, 0.24, 1]}>
-          <sphereGeometry args={[h.r, 20, 12]} />
-          <meshStandardMaterial color="#59614a" roughness={1} metalness={0} />
-        </mesh>
-      ))}
-
-      {/* A low cloud bank on the horizon, behind the hills. */}
-      {cloudTex !== null && bank.length > 0 && (
-        <group ref={bankRef}>
-          {bank.map((c, i) => (
-            <mesh key={i} position={[c.x, c.y, c.z]}>
-              <planeGeometry args={[c.w, c.h]} />
-              <meshBasicMaterial
-                map={cloudTex}
-                color="#dbe6ef"
-                transparent
-                opacity={c.opacity}
-                depthWrite={false}
-              />
-            </mesh>
-          ))}
-          {/* A faint virga veil hanging under one bank cloud. */}
-          <mesh position={[bank[1].x, bank[1].y - 2.4, bank[1].z + 0.2]}>
-            <planeGeometry args={[bank[1].w * 0.5, 3.6]} />
-            <meshBasicMaterial
-              map={cloudTex}
-              color="#c8d6e2"
-              transparent
-              opacity={0.06}
-              depthWrite={false}
-            />
-          </mesh>
-        </group>
-      )}
-
-      {/* Distant dawn clouds — barely there, drifting over the hills. */}
-      {cloudTex !== null && clouds.length > 0 && (
-        <group ref={cloudsRef}>
-          {clouds.map((c, i) => (
-            <mesh key={i} position={[c.x, c.y, c.z]}>
-              <planeGeometry args={[c.w, c.h]} />
-              <meshBasicMaterial
-                map={cloudTex}
-                color="#e6eef4"
-                transparent
-                opacity={c.opacity}
-                depthWrite={false}
-              />
-            </mesh>
-          ))}
-        </group>
-      )}
+      {/* Sky, clouds, mountains and the distant field all come from the HDRI
+          backdrop now — the foreground below is the only rendered geometry. */}
 
       {/* A far flock, high over the hills — indifferent to being watched. */}
       {birdTex !== null && birds.length > 0 && (

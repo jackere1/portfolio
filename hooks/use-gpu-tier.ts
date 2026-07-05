@@ -59,10 +59,11 @@ const QUALITY_CONFIGS: Record<GpuTier, QualityConfig> = {
     filmGrain: false,
     geometryDetail: "reduced",
     shadows: false,
-    // Drop the (relief-only) normal map on integrated GPUs; keep albedo + roughness.
-    textureMaps: ["albedo", "roughness"],
-    textureSize: 512,
-    maxDpr: 1.25,
+    // Integrated GPUs sample high-res textures + normals cheaply (fill-rate, not
+    // texture memory, is their limit) — so give them the full, sharp maps.
+    textureMaps: ALL_MAPS,
+    textureSize: 2048,
+    maxDpr: 1.5,
   },
   low: {
     particleCount: 0,

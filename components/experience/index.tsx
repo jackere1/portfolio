@@ -29,7 +29,7 @@ function Scene({ setDpr }: { setDpr: (dpr: number) => void }) {
   // Adaptive resolution: if frames dip, drop the pixel ratio (the cheapest way
   // to recover) and lift it back when there's headroom — smooth on any GPU,
   // bounded by the tier's ceiling and a floor of 0.6.
-  const floor = 0.6
+  const floor = 0.8
   const ceil = Math.max(floor, quality.maxDpr)
 
   return (
@@ -39,13 +39,17 @@ function Scene({ setDpr }: { setDpr: (dpr: number) => void }) {
       />
       <CameraRig />
       <Environment />
-      {/* Real image-based lighting from a clear-sky HDRI — lights the surface's
-          models/ground realistically. Lighting only (no background); its
-          intensity is faded to nothing underground in environment.tsx. */}
-      {quality.textureMaps.length > 0 && (
-        <HdriEnvironment files="/hdri/sky_1k.hdr" />
+      {/* The surface's world is a real photographed place: a landscape HDRI used
+          as BOTH the visible backdrop (sky + mountains + distant field) and the
+          light. Peak realism for one texture, near-zero per-frame compute. Its
+          background + lighting intensity fade to nothing underground (environment
+          .tsx), where the shaft is a sealed box. The weakest tier can't afford
+          the HDRI, so it keeps the cheap gradient sky-dome. */}
+      {quality.textureMaps.length > 0 ? (
+        <HdriEnvironment files="/hdri/landscape_2k.hdr" background />
+      ) : (
+        <SkyDome />
       )}
-      <SkyDome />
 
       {/* The shaft — a stack of distinct floor stages you descend through,
           divided by storey slabs, with ground level at the boundary. */}

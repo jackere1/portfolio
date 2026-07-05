@@ -4,6 +4,7 @@ import { useMemo, useRef } from "react"
 import { useFrame, useThree } from "@react-three/fiber"
 import * as THREE from "three"
 import { useScrollStore } from "@/hooks/use-scroll-store"
+import { useGpuTier } from "@/hooks/use-gpu-tier"
 
 /**
  * The light of the descent. Three keyframes driven by depth:
@@ -33,7 +34,10 @@ const LAMP_I = [0.6, 2.4, 3.4]
 const HEMI_I = [0.2, 0.12, 0]
 // HDRI environment (image-based) intensity by depth: full at the surface, gone
 // in the sealed deep. Drives scene.environmentIntensity.
-const ENV_I = [0.95, 0.28, 0]
+const ENV_I = [1.05, 0.28, 0]
+// The visible HDRI background: full at the surface (the real place), fading as
+// you cross the seam into the sealed shaft. Drives scene.backgroundIntensity.
+const BG_I = [1, 0.3, 0]
 // KEY_POS[0] is the daytime sun, high and slightly in front so it lights the
 // faces the camera sees. It must match uSunDir in components/world/sky-dome.tsx:
 // same sun, same sky.
@@ -48,7 +52,7 @@ const col = (hex: string) => new THREE.Color(hex)
 // components/world/sky-dome.tsx so the hills at the fog limit melt into the
 // sky band above them — one continuous blue haze, dome to ground.
 const BG = ["#a6c3dc", "#2a2418", "#0a0a0c"].map(col)
-const FOG = ["#aec6da", "#14100a", "#08080a"].map(col)
+const FOG = ["#cdd4cb", "#14100a", "#08080a"].map(col)
 const AMB = ["#dfe9f4", "#c8a050", "#c8a050"].map(col)
 const KEY = ["#fff4de", "#e8b040", "#e8b040"].map(col)
 const FILL = ["#b4c8e4", "#4060c0", "#4060c0"].map(col)
@@ -63,6 +67,11 @@ function segment(p: number): [number, number, number] {
 
 export function Environment() {
   const { scene, camera } = useThree()
+  const { quality } = useGpuTier()
+  // On the rich tier the landscape HDRI IS the background (set by drei); we only
+  // fade its intensity here. On the weakest tier there's no HDRI, so we drive the
+  // gradient colour background ourselves.
+  const hasHdri = quality.textureMaps.length > 0
   const ambRef = useRef<THREE.AmbientLight>(null)
   const keyRef = useRef<THREE.DirectionalLight>(null)
   const fillRef = useRef<THREE.DirectionalLight>(null)
@@ -76,9 +85,14 @@ export function Environment() {
     const p = useScrollStore.getState().progress
     const [i0, i1, t] = segment(p)
 
-    // Background — assign once, then mutate in place.
-    bg.lerpColors(BG[i0], BG[i1], t)
-    if (scene.background !== bg) scene.background = bg
+    // Background: the HDRI (rich) owns scene.background — we only fade its
+    // brightness; without it, drive the gradient colour ourselves.
+    if (!hasHdri) {
+      bg.lerpColors(BG[i0], BG[i1], t)
+      if (scene.background !== bg) scene.background = bg
+    }
+    ;(scene as THREE.Scene & { backgroundIntensity: number }).backgroundIntensity =
+      lerp(BG_I[i0], BG_I[i1], t)
 
     // Fog (mutate scene.fog created by the <fog> element below).
     const fog = scene.fog as THREE.Fog | null
