@@ -149,10 +149,16 @@ export function MobileFallback() {
               <span className="text-[oklch(0.7_0.02_80/0.95)]">
                 “Use graphics acceleration when available”
               </span>{" "}
-              in your browser’s settings (System), then reload. On Linux you may
-              also need{" "}
+              in settings (System) and reload. On Linux, if it’s still blank,
+              check{" "}
+              <span className="text-[oklch(0.7_0.02_80/0.95)]">chrome://gpu</span>;
+              enable{" "}
               <span className="text-[oklch(0.7_0.02_80/0.95)]">chrome://flags</span>{" "}
-              → “Override software rendering list”.
+              → “Ignore GPU blocklist”, or launch with{" "}
+              <span className="text-[oklch(0.7_0.02_80/0.95)]">
+                --enable-unsafe-swiftshader
+              </span>
+              .
             </p>
           </div>
         ) : (
