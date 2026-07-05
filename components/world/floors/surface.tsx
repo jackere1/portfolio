@@ -8,6 +8,7 @@ import { useGpuTier } from "@/hooks/use-gpu-tier"
 import { makeRng, seededRange, clamp } from "@/lib/prng"
 import { PbrMaterial } from "@/lib/textures"
 import { GrassField } from "@/components/world/grass"
+import { GrazingHorse } from "@/components/world/horse"
 import type { FloorProps } from "@/lib/floors"
 
 const TAU = Math.PI * 2
@@ -142,89 +143,9 @@ interface Horse {
   bobPhase: number
 }
 
-// The Mongolian horse coats — dun, bay, brown, black, grey. Read as quiet
-// silhouettes at this distance, but the tone keeps the herd from looking cloned.
+// The Mongolian horse coats — dun, bay, brown, black, grey. The model is tinted
+// per animal so the herd doesn't look cloned.
 const HORSE_COATS = ["#4a3826", "#3a2c1e", "#5a4632", "#2a221c", "#6a5c4a"]
-
-// A grazing horse in side profile, standing on y=0, facing +x, head lowered to
-// the grass. A handful of boxes — at mid-field distance that is all it needs.
-// Self-animating: a slow graze drift across the field, a faint bob, the head
-// nodding at the grass, and the tail swishing. A soft contact shadow grounds it.
-const HORSE_LEGS: [number, number][] = [
-  [0.32, 0.1],
-  [0.32, -0.1],
-  [-0.32, 0.1],
-  [-0.32, -0.1],
-]
-
-function GrazingHorse({
-  m,
-  reduced,
-  shadowTex,
-}: {
-  m: Horse
-  reduced: boolean
-  shadowTex: THREE.Texture | null
-}) {
-  const groupRef = useRef<THREE.Group>(null)
-  const neckRef = useRef<THREE.Group>(null)
-  const tailRef = useRef<THREE.Mesh>(null)
-  const mat = { color: m.tone, roughness: 0.85, metalness: 0 } as const
-
-  useFrame((state) => {
-    const g = groupRef.current
-    if (!g) return
-    const t = state.clock.elapsedTime
-    const drift = reduced ? 0 : Math.sin(t * m.driftFreq + m.driftPhase) * m.driftAmp
-    const bob = reduced ? 0 : Math.sin(t * 0.6 + m.bobPhase) * 0.015
-    g.position.set(m.x + drift, m.gy + bob, m.z)
-    if (reduced) return
-    // The head nods at the grass; the tail swishes on its own clock.
-    if (neckRef.current) neckRef.current.rotation.z = -0.75 + Math.sin(t * 0.7 + m.bobPhase) * 0.16
-    if (tailRef.current) tailRef.current.rotation.z = 0.5 + Math.sin(t * 1.9 + m.bobPhase) * 0.22
-  })
-
-  return (
-    <group
-      ref={groupRef}
-      position={[m.x, m.gy, m.z]}
-      rotation={[0, m.dir < 0 ? Math.PI : 0, 0]}
-      scale={m.scale}
-    >
-      {shadowTex && (
-        <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[1.6, 0.95]} />
-          <meshBasicMaterial map={shadowTex} transparent opacity={0.3} depthWrite={false} />
-        </mesh>
-      )}
-      <mesh position={[0, 0.62, 0]}>
-        <boxGeometry args={[1.0, 0.34, 0.3]} />
-        <meshStandardMaterial {...mat} />
-      </mesh>
-      {/* Neck + head, pivoting at the shoulder so they nod together. */}
-      <group ref={neckRef} position={[0.42, 0.74, 0]} rotation={[0, 0, -0.75]}>
-        <mesh position={[0.05, -0.2, 0]}>
-          <boxGeometry args={[0.16, 0.46, 0.22]} />
-          <meshStandardMaterial {...mat} />
-        </mesh>
-        <mesh position={[0.22, -0.42, 0]} rotation={[0, 0, 0.5]}>
-          <boxGeometry args={[0.3, 0.15, 0.16]} />
-          <meshStandardMaterial {...mat} />
-        </mesh>
-      </group>
-      {HORSE_LEGS.map(([lx, lz], i) => (
-        <mesh key={i} position={[lx, 0.26, lz]}>
-          <boxGeometry args={[0.08, 0.52, 0.09]} />
-          <meshStandardMaterial {...mat} />
-        </mesh>
-      ))}
-      <mesh ref={tailRef} position={[-0.5, 0.52, 0]} rotation={[0, 0, 0.5]}>
-        <boxGeometry args={[0.07, 0.32, 0.07]} />
-        <meshStandardMaterial {...mat} />
-      </mesh>
-    </group>
-  )
-}
 
 /**
  * Surface — the appearance. The Mongolian steppe just after sunrise: open
@@ -255,9 +176,10 @@ export function FloorSurface({ yTop, yBottom }: FloorProps) {
   // stays, so the software path still gets a real steppe, just lighter.
   const rich = full || reducedTier
 
-  // Dense GPU grass — vertex-shader wind, so the count is a fill-rate choice, not
-  // a CPU-animation one. Real GPUs get a lush field; software gets a light one.
-  const bladeCount = full ? 34000 : reducedTier ? 13000 : 2400
+  // GPU grass — vertex-shader wind. The count is a FILL-RATE choice: every blade
+  // is rasterized, so density (not animation) is what costs frames. Tuned down
+  // from "as many as possible" to "lush but smooth" — weaker GPUs feel the fill.
+  const bladeCount = full ? 15000 : reducedTier ? 7000 : 2200
   const grassHeightScale = rich ? 1 : 0.55
   const stoneCount = full ? 8 : reducedTier ? 5 : 3
   const herdCount = full ? 7 : reducedTier ? 5 : 3
@@ -578,7 +500,7 @@ export function FloorSurface({ yTop, yBottom }: FloorProps) {
   const motes = useMemo(() => {
     if (!rich) return null
     const rng = makeRng("floor-surface-motes")
-    const n = full ? 190 : 120
+    const n = full ? 120 : 80
     const base = new Float32Array(n * 3)
     const drift: { ax: number; ay: number; az: number; px: number; py: number; pz: number; sp: number }[] = []
     for (let i = 0; i < n; i++) {

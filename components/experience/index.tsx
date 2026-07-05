@@ -1,8 +1,8 @@
 "use client"
 
 import { Canvas } from "@react-three/fiber"
-import { Preload } from "@react-three/drei"
-import { Suspense, useEffect, useRef } from "react"
+import { Preload, PerformanceMonitor } from "@react-three/drei"
+import { Suspense, useEffect, useRef, useState } from "react"
 import Lenis from "lenis"
 import { CameraRig } from "./camera-rig"
 import { Environment } from "./environment"
@@ -20,11 +20,19 @@ import { Cursor } from "../ui/cursor"
 import { useScrollStore } from "@/hooks/use-scroll-store"
 import { useGpuTier } from "@/hooks/use-gpu-tier"
 
-function Scene() {
+function Scene({ setDpr }: { setDpr: (dpr: number) => void }) {
   const { quality } = useGpuTier()
+  // Adaptive resolution: if frames dip, drop the pixel ratio (the cheapest way
+  // to recover) and lift it back when there's headroom — smooth on any GPU,
+  // bounded by the tier's ceiling and a floor of 0.6.
+  const floor = 0.6
+  const ceil = Math.max(floor, quality.maxDpr)
 
   return (
     <>
+      <PerformanceMonitor
+        onChange={({ factor }) => setDpr(floor + factor * (ceil - floor))}
+      />
       <CameraRig />
       <Environment />
       <SkyDome />
@@ -47,6 +55,11 @@ export function Experience() {
   const loaded = useScrollStore((s) => s.loaded)
   const setProgress = useScrollStore((s) => s.setProgress)
   const { quality } = useGpuTier()
+  // Live pixel ratio, seeded from the tier and then steered by PerformanceMonitor.
+  const [dpr, setDpr] = useState(1.25)
+  useEffect(() => {
+    setDpr(quality.maxDpr)
+  }, [quality.maxDpr])
 
   useEffect(() => {
     const lenis = new Lenis({
@@ -96,7 +109,7 @@ export function Experience() {
             stencil: false,
             depth: true,
           }}
-          dpr={[1, quality.maxDpr]}
+          dpr={dpr}
           camera={{ position: [0, 12, 8], fov: 60, near: 0.1, far: 200 }}
           style={{
             background: "#9bb0cf",
@@ -105,7 +118,7 @@ export function Experience() {
           }}
         >
           <Suspense fallback={null}>
-            <Scene />
+            <Scene setDpr={setDpr} />
           </Suspense>
         </Canvas>
       </div>
