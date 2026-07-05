@@ -3,7 +3,7 @@ import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import { useReducedMotion } from "@/hooks/use-reduced-motion"
 import { makeRng, seededRange, clamp } from "@/lib/prng"
-import type { FloorProps } from "@/lib/floors"
+import { FLOOR_ACTIVE_MARGIN, type FloorProps } from "@/lib/floors"
 
 // The strings stretch across the cell along X, anchored at the bridges.
 const X_LEFT = -4
@@ -115,6 +115,7 @@ export function FloorEar({ yTop, yBottom, yCenter, height }: FloorProps) {
 
   useFrame((state, delta) => {
     if (!meshRef.current) return
+    if (Math.abs(state.camera.position.y - yCenter) > FLOOR_ACTIVE_MARGIN) return
     const t = state.clock.elapsedTime
     const dt = Math.min(delta, 0.1)
 

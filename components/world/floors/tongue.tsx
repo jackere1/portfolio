@@ -3,7 +3,7 @@ import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import { useReducedMotion } from "@/hooks/use-reduced-motion"
 import { makeRng, seededRange, seededDrift, clamp } from "@/lib/prng"
-import type { FloorProps } from "@/lib/floors"
+import { FLOOR_ACTIVE_MARGIN, type FloorProps } from "@/lib/floors"
 
 // One glyph-stroke: a short angular beam in a vertical column. The base box
 // geometry is a unit cube scaled per-instance into a thin beam, then animated
@@ -155,7 +155,7 @@ const FAR_X_BASES = [1.0, 2.7] // right of centre — the text holds the left
  * exactly like a caret dropping into a line. The far columns never respond:
  * some of the language stays where the machines can't touch it.
  */
-export function FloorTongue({ yTop, yBottom }: FloorProps) {
+export function FloorTongue({ yTop, yBottom, yCenter }: FloorProps) {
   const meshRef = useRef<THREE.InstancedMesh>(null)
   const farRef = useRef<THREE.InstancedMesh>(null)
   const reduced = useReducedMotion()
@@ -205,6 +205,7 @@ export function FloorTongue({ yTop, yBottom }: FloorProps) {
   const farColorsPlacedRef = useRef(false)
 
   useFrame((state) => {
+    if (Math.abs(state.camera.position.y - yCenter) > FLOOR_ACTIVE_MARGIN) return
     const mesh = meshRef.current
     const far = farRef.current
 

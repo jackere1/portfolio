@@ -9,7 +9,7 @@ import { makeRng, seededRange, clamp } from "@/lib/prng"
 import { PbrMaterial } from "@/lib/textures"
 import { GrassField } from "@/components/world/grass"
 import { GrazingHorse } from "@/components/world/horse"
-import type { FloorProps } from "@/lib/floors"
+import { FLOOR_ACTIVE_MARGIN, type FloorProps } from "@/lib/floors"
 
 const TAU = Math.PI * 2
 
@@ -155,7 +155,7 @@ const HORSE_COATS = ["#4a3826", "#3a2c1e", "#5a4632", "#2a221c", "#6a5c4a"]
  * being watched: the wind crosses whether or not anyone is there (seeded,
  * clamped); the pointer only parts the grass near it. Below it, the world locks.
  */
-export function FloorSurface({ yTop, yBottom }: FloorProps) {
+export function FloorSurface({ yTop, yBottom, yCenter }: FloorProps) {
   const reduced = useReducedMotion()
   const { quality } = useGpuTier()
   const cloudsRef = useRef<THREE.Group>(null)
@@ -552,6 +552,7 @@ export function FloorSurface({ yTop, yBottom }: FloorProps) {
   }, [birds, dummy])
 
   useFrame((state) => {
+    if (Math.abs(state.camera.position.y - yCenter) > FLOOR_ACTIVE_MARGIN) return
     const t = state.clock.elapsedTime
 
     // High clouds drift laterally — clamped by construction, minutes-long periods.

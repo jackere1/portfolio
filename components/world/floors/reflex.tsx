@@ -3,7 +3,7 @@ import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import { useReducedMotion } from "@/hooks/use-reduced-motion"
 import { makeRng } from "@/lib/prng"
-import type { FloorProps } from "@/lib/floors"
+import { FLOOR_ACTIVE_MARGIN, type FloorProps } from "@/lib/floors"
 
 // The targeting grid lives on a vertical plane near the back of the cell,
 // facing the camera. Reticles snap between its intersections.
@@ -149,6 +149,7 @@ export function FloorReflex({ yTop, yBottom, yCenter }: FloorProps) {
   // absent, so it lands on the nearest intersection frame-exact, no lerp,
   // and holds the deterministic sequence when the pointer leaves the band.
   useFrame((state) => {
+    if (Math.abs(state.camera.position.y - yCenter) > FLOOR_ACTIVE_MARGIN) return
     const t = reduced ? 0 : state.clock.elapsedTime
     const step = Math.floor(t / CADENCE)
 

@@ -9,7 +9,7 @@ import {
   SEAM_Y,
   regionFactor,
 } from "@/lib/world-config"
-import type { FloorProps } from "@/lib/floors"
+import { FLOOR_ACTIVE_MARGIN, type FloorProps } from "@/lib/floors"
 
 // The pointer projects onto the front cube layer; the upper lattice notices it
 // within this radius and leans — softly, lagging. The lower lattice does not.
@@ -50,7 +50,7 @@ interface Mote {
  * zero response. Not damped. Zero. And the water above carries a little dust;
  * below the seam it is perfectly clear.
  */
-export function FloorThreshold({ yTop, yBottom }: FloorProps) {
+export function FloorThreshold({ yTop, yBottom, yCenter }: FloorProps) {
   const meshRef = useRef<THREE.InstancedMesh>(null)
   const motesRef = useRef<THREE.InstancedMesh>(null)
   const reduced = useReducedMotion()
@@ -122,6 +122,7 @@ export function FloorThreshold({ yTop, yBottom }: FloorProps) {
   }, [yTop])
 
   useFrame((state, delta) => {
+    if (Math.abs(state.camera.position.y - yCenter) > FLOOR_ACTIVE_MARGIN) return
     const t = state.clock.elapsedTime
     const dt = Math.min(delta, 0.1)
 

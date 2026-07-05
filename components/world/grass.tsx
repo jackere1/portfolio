@@ -4,6 +4,7 @@ import { useMemo, useRef } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import { makeRng, seededRange } from "@/lib/prng"
+import { FLOOR_ACTIVE_MARGIN } from "@/lib/floors"
 
 // GPU grass. Tens of thousands of blades placed once; the wind lives entirely
 // in the vertex shader (one uTime uniform), so the CPU does nothing per blade —
@@ -194,9 +195,12 @@ export function GrassField({
     [sunColor, ambient, tipWarm, reduced]
   )
 
+  const bandMid = (band[0] + band[1]) / 2
   useFrame((state) => {
     const m = matRef.current
     if (!m) return
+    // Freeze the wind (and skip the pointer raycast) when the floor is off-screen.
+    if (Math.abs(state.camera.position.y - bandMid) > FLOOR_ACTIVE_MARGIN) return
     m.uniforms.uTime.value = state.clock.elapsedTime
     m.uniforms.uMotion.value = reduced ? 0 : 1
     if (reduced) {

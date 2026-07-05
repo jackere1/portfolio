@@ -5,6 +5,7 @@ import { useFrame } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
 import { clone as skeletonClone } from "three/examples/jsm/utils/SkeletonUtils.js"
 import * as THREE from "three"
+import { FLOOR_ACTIVE_MARGIN } from "@/lib/floors"
 
 // A real horse mesh (glTF) grazing the steppe — a proper silhouette in place of
 // the old boxes. Loaded once and deep-cloned per animal (each gets its own coat
@@ -83,6 +84,8 @@ export function GrazingHorse({
   }, [mixer, animations])
 
   useFrame((state, delta) => {
+    // Stand still when the surface is off-screen — no gait, no drift.
+    if (Math.abs(state.camera.position.y - m.gy) > FLOOR_ACTIVE_MARGIN) return
     if (!reduced) mixer.update(Math.min(delta, 0.1) * 0.45)
     const g = groupRef.current
     if (!g) return

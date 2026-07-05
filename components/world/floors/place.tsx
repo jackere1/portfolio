@@ -6,7 +6,7 @@ import * as THREE from "three"
 import { useReducedMotion } from "@/hooks/use-reduced-motion"
 import { makeRng, seededRange, clamp } from "@/lib/prng"
 import { PbrMaterial } from "@/lib/textures"
-import type { FloorProps } from "@/lib/floors"
+import { FLOOR_ACTIVE_MARGIN, type FloorProps } from "@/lib/floors"
 
 interface Block {
   x: number
@@ -58,7 +58,7 @@ interface Twinkle {
  * few ger crowns; windows go dark and light again across the night. The city
  * never notices the cursor — only the survey mark answers it, once, exactly.
  */
-export function FloorPlace({ yTop, yBottom }: FloorProps) {
+export function FloorPlace({ yTop, yBottom, yCenter }: FloorProps) {
   const reduced = useReducedMotion()
   const smokeRef = useRef<THREE.InstancedMesh>(null)
   const markMatRef = useRef<THREE.MeshStandardMaterial>(null)
@@ -181,6 +181,7 @@ export function FloorPlace({ yTop, yBottom }: FloorProps) {
   }, [wisps, dummy])
 
   useFrame((state, delta) => {
+    if (Math.abs(state.camera.position.y - yCenter) > FLOOR_ACTIVE_MARGIN) return
     const t = state.clock.elapsedTime
     const dt = Math.min(delta, 0.1)
 

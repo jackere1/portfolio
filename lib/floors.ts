@@ -75,6 +75,13 @@ export const floors: FloorBand[] = rooms.map((room, index) => {
   }
 })
 
+// A floor only animates when the camera is within this many world-Y units of its
+// stage — off-screen floors freeze, so only the one or two near the cab spend
+// per-frame CPU (all seven stay mounted). Generous enough that motion has resumed
+// before a floor scrolls into view. Guard a floor's useFrame with:
+//   if (Math.abs(state.camera.position.y - yCenter) > FLOOR_ACTIVE_MARGIN) return
+export const FLOOR_ACTIVE_MARGIN = 16
+
 // Each floor scene receives its compact stage bounds and builds within them.
 // `stillness` is the stratum's temperament (see world-config): scale every
 // ambient amplitude by (1 − 0.65 × stillness). Adopt it whenever a scene's

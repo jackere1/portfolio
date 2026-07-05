@@ -3,7 +3,7 @@ import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import { useReducedMotion } from "@/hooks/use-reduced-motion"
 import { makeRng, seededRange, seededDrift, clamp } from "@/lib/prng"
-import type { FloorProps } from "@/lib/floors"
+import { FLOOR_ACTIVE_MARGIN, type FloorProps } from "@/lib/floors"
 
 // One dated marker — a thin slab planted in the grid. Most stand upright (a bet
 // still alive); a seeded third are toppled, lying flat on the floor (the ones
@@ -48,7 +48,7 @@ interface FarMarker {
   fallDir: number
 }
 
-export function FloorOath({ yBottom }: FloorProps) {
+export function FloorOath({ yBottom, yCenter }: FloorProps) {
   const standingRef = useRef<THREE.InstancedMesh>(null)
   const toppledRef = useRef<THREE.InstancedMesh>(null)
   const capRef = useRef<THREE.InstancedMesh>(null)
@@ -275,6 +275,7 @@ export function FloorOath({ yBottom }: FloorProps) {
   }
 
   useFrame((state) => {
+    if (Math.abs(state.camera.position.y - yCenter) > FLOOR_ACTIVE_MARGIN) return
     const t = reduced ? 0 : state.clock.elapsedTime
 
     // Standing slabs: planted, with only a near-imperceptible sway — the field
