@@ -1,16 +1,30 @@
 "use client"
 
-import { useEffect, useMemo, useRef } from "react"
-import { useFrame } from "@react-three/fiber"
+import { useMemo } from "react"
 import * as THREE from "three"
 import { useReducedMotion } from "@/hooks/use-reduced-motion"
 import { useGpuTier } from "@/hooks/use-gpu-tier"
 import { makeRng, seededRange, clamp } from "@/lib/prng"
-import { PbrMaterial } from "@/lib/textures"
 import { GrassField } from "@/components/world/grass"
-import { GrazingHorse } from "@/components/world/horse"
-import { Rocks } from "@/components/world/rocks"
-import { FLOOR_ACTIVE_MARGIN, type FloorProps } from "@/lib/floors"
+import { Mountains } from "@/components/world/mountains"
+import { MountainsPhoto } from "@/components/world/mountains-photo"
+import { Sun } from "@/components/world/sun"
+import { AssetBoundary } from "@/components/experience/asset-boundary"
+import { PbrMaterial } from "@/lib/textures"
+import { type FloorProps } from "@/lib/floors"
+import {
+  SUN_DIR,
+  SUN_COLOR,
+  SKY_FILL,
+  GRASS_BASE,
+  GRASS_DRY,
+  GRASS_RIM,
+  GROUND_GREEN,
+  GROUND_WARM,
+  HAZE,
+  SURFACE_FOG_NEAR,
+  SURFACE_FOG_FAR,
+} from "@/lib/surface-light"
 
 const TAU = Math.PI * 2
 
@@ -19,48 +33,38 @@ const smoothstep = (e0: number, e1: number, x: number) => {
   return t * t * (3 - 2 * t)
 }
 
-// ── The land ────────────────────────────────────────────────────────────────
-// A single seeded height field the whole surface stands on: ground plane, grass,
-// stones and trail all sample it, so nothing floats or sinks. Nearly flat under
-// the camera and down the central corridor; swelling only far out toward the
-// hills. A corridor mask keeps the near ground level.
+// ── The rolling land ─────────────────────────────────────────────────────────
+// One seeded height field the ground and grass both sample, so nothing floats.
+// Gently rolling meadow — swelling more toward the hills, near-level underfoot.
 interface TerrainWave {
   ax: number
   az: number
   ph: number
   w: number
 }
-interface Terrain {
-  waves: TerrainWave[]
-}
 
-function makeTerrain(): Terrain {
-  const rng = makeRng("floor-surface-terrain")
+function makeTerrain(): TerrainWave[] {
+  const rng = makeRng("surface-terrain")
   const raw = [
-    { ax: seededRange(rng, 0.06, 0.11), az: seededRange(rng, 0.05, 0.1), ph: seededRange(rng, 0, TAU), w: 1.0 },
-    { ax: seededRange(rng, 0.14, 0.22), az: seededRange(rng, 0.12, 0.2), ph: seededRange(rng, 0, TAU), w: 0.55 },
-    { ax: seededRange(rng, 0.3, 0.42), az: seededRange(rng, 0.26, 0.4), ph: seededRange(rng, 0, TAU), w: 0.28 },
+    { ax: seededRange(rng, 0.05, 0.09), az: seededRange(rng, 0.04, 0.08), ph: seededRange(rng, 0, TAU), w: 1.0 },
+    { ax: seededRange(rng, 0.12, 0.19), az: seededRange(rng, 0.1, 0.17), ph: seededRange(rng, 0, TAU), w: 0.5 },
+    { ax: seededRange(rng, 0.26, 0.38), az: seededRange(rng, 0.22, 0.34), ph: seededRange(rng, 0, TAU), w: 0.26 },
   ]
   const sum = raw.reduce((s, r) => s + r.w, 0)
-  return { waves: raw.map((r) => ({ ...r, w: r.w / sum })) }
+  return raw.map((r) => ({ ...r, w: r.w / sum }))
 }
 
-function terrainHeight(t: Terrain, x: number, z: number): number {
-  // Only the far field, up by the hills, swells; everything from the camera to
-  // the mid-ground stays nearly level so no slope turns its back on the low sun
-  // and shadows into a dark bowl.
-  const distFactor = smoothstep(-18, -36, z)
-  const amp = 0.1 + (0.42 - 0.1) * distFactor
-  // 0 down the central corridor (the path to the gate), 1 out in the field —
-  // a wide, soft transition so the corridor never creases against the field.
-  const corridor = smoothstep(1.2, 4.6, Math.abs(x))
+function terrainHeight(waves: TerrainWave[], x: number, z: number): number {
+  // Gently rolling meadow — the mountains own the distance now, so the ground
+  // stays a soft swell rather than building competing hills.
+  const distFactor = smoothstep(-12, -34, z)
+  const amp = 0.3 + (0.75 - 0.3) * distFactor
   let h = 0
-  for (const wv of t.waves) h += Math.sin(x * wv.ax + z * wv.az + wv.ph) * wv.w
-  return amp * corridor * h
+  for (const wv of waves) h += Math.sin(x * wv.ax + z * wv.az + wv.ph) * wv.w
+  return amp * h
 }
 
-// Seeded ground-cover mottling: dawn steppe is patchy dry-gold and green, never
-// one flat tone. 0 → green, 1 → dry gold.
+// Seeded green/gold mottling — a meadow is never one flat tone.
 interface Patch {
   k: number
   p1: number
@@ -68,425 +72,141 @@ interface Patch {
 }
 function dryness(p: Patch, x: number, z: number): number {
   return clamp(
-    0.5 +
-      0.35 * Math.sin(x * p.k + z * p.k * 0.8 + p.p1) +
-      0.15 * Math.sin(x * 0.07 - z * 0.09 + p.p2),
+    0.34 +
+      0.3 * Math.sin(x * p.k + z * p.k * 0.8 + p.p1) +
+      0.14 * Math.sin(x * 0.06 - z * 0.08 + p.p2),
     0,
     1
   )
 }
 
-interface Bird {
-  cx: number
-  cz: number
-  rx: number
-  rz: number
-  y: number
-  speed: number
-  phase: number
-  bob: number
-}
-
-interface Horse {
-  x: number
-  z: number
-  gy: number
-  dir: number // +1 faces +x, -1 faces -x
-  scale: number
-  tone: string
-  driftAmp: number
-  driftFreq: number
-  driftPhase: number
-  bobPhase: number
-}
-
-// The Mongolian horse coats — dun, bay, brown, black, grey. The model is tinted
-// per animal so the herd doesn't look cloned.
-const HORSE_COATS = ["#4a3826", "#3a2c1e", "#5a4632", "#2a221c", "#6a5c4a"]
-
 /**
- * Surface — the appearance. The Mongolian steppe just after sunrise: open
- * undulating grassland under a low dawn sun, hills melting into haze, a worn
- * trail crossing the field and a far flock rounding the sky. This is the outer
- * self — bright, drifting, built to be seen — composed and calm, indifferent to
- * being watched: the wind crosses whether or not anyone is there (seeded,
- * clamped); the pointer only parts the grass near it. Below it, the world locks.
+ * Surface — the appearance. A golden-hour mountain meadow: lush green grass
+ * backlit by a low sun so it glows, rolling into a warm haze. Built to be seen,
+ * nearly wordless. The wind crosses whether or not anyone is watching (seeded,
+ * clamped); the pointer only parts the grass near it.
  */
-export function FloorSurface({ yTop, yBottom, yCenter }: FloorProps) {
+export function FloorSurface({ yTop, yBottom }: FloorProps) {
   const reduced = useReducedMotion()
   const { quality } = useGpuTier()
-  const birdsRef = useRef<THREE.InstancedMesh>(null)
-  const dummy = useMemo(() => new THREE.Object3D(), [])
 
   const groundY = yBottom
 
   const full = quality.geometryDetail === "full"
   const reducedTier = quality.geometryDetail === "reduced"
-  // "rich" = a real GPU (full OR integrated/reduced). On a real GPU the grass is
-  // near-free (hardware instancing). The "minimal" tier is where SOFTWARE
-  // rasterizers land (SwiftShader / llvmpipe) — there every pixel is drawn on the
-  // CPU, so grass overdraw is the enemy. rich-only elements are the transparent,
-  // overdraw-heavy ones (clouds, cloud shadows); everything else scales down but
-  // stays, so the software path still gets a real steppe, just lighter.
-  const rich = full || reducedTier
+  // A FEW TALL tufts scattered on the dirt — not a dense carpet. Sparse and tall
+  // reads as dry steppe and lets the ground show through.
+  const bladeCount = full ? 1100 : reducedTier ? 700 : 350
+  const grassHeightScale = full ? 1.9 : reducedTier ? 1.7 : 1.4
 
-  // GPU grass — vertex-shader wind. The count is a FILL-RATE choice: every blade
-  // is rasterized, so density (not animation) is what costs frames. Tuned down
-  // from "as many as possible" to "lush but smooth" — weaker GPUs feel the fill.
-  // A modest, short foreground fringe only — the sharp ground texture and the
-  // photographed field carry the grass; the 3D blades just add life underfoot.
-  const bladeCount = full ? 5000 : reducedTier ? 3000 : 1500
-  const grassHeightScale = rich ? 0.78 : 0.5
-  const rockCount = full ? 7 : reducedTier ? 5 : 0
-  const herdCount = full ? 7 : reducedTier ? 5 : 3
-
-  // The land and its cover — one shared height field, one shared mottling.
   const terrain = useMemo(() => makeTerrain(), [])
   const patch = useMemo<Patch>(() => {
-    const rng = makeRng("floor-surface-patch")
+    const rng = makeRng("surface-patch")
     return {
-      k: seededRange(rng, 0.12, 0.2),
+      k: seededRange(rng, 0.1, 0.18),
       p1: seededRange(rng, 0, TAU),
       p2: seededRange(rng, 0, TAU),
     }
   }, [])
 
-  // The undulating ground — a segmented plane displaced by the height field, so
-  // the grassland reads as land, not a table. Segment count scales with tier.
+  // The rolling ground — a displaced plane sampling the height field.
   const groundGeo = useMemo(() => {
-    const segX = full ? 84 : 48
-    const segZ = Math.round((segX * 66) / 70)
-    const g = new THREE.PlaneGeometry(70, 66, segX, segZ)
+    const segX = full ? 96 : 56
+    const segZ = Math.round((segX * 70) / 78)
+    const g = new THREE.PlaneGeometry(78, 70, segX, segZ)
     const pos = g.attributes.position
     for (let i = 0; i < pos.count; i++) {
       const lx = pos.getX(i)
       const ly = pos.getY(i)
-      // Plane is laid flat at [0, groundY, -22]; local (lx,ly) → world (lx, *, -ly-22).
-      pos.setZ(i, terrainHeight(terrain, lx, -ly - 22))
+      // Plane laid flat at [0, groundY, -24]; local (lx,ly) → world (lx,*,-ly-24).
+      pos.setZ(i, terrainHeight(terrain, lx, -ly - 24))
     }
     pos.needsUpdate = true
     g.computeVertexNormals()
     return g
   }, [terrain, full])
 
-  // Ground height and grass tone as closures the GPU grass samples once when it
-  // places its blades — so the field sits on the terrain and mottles like the
-  // ground beneath it.
   const heightAt = useMemo(
     () => (x: number, z: number) => groundY + terrainHeight(terrain, x, z),
     [groundY, terrain]
   )
+
+  // Grass tone: mostly lush green, seeded dry-gold patches.
   const grassTone = useMemo(() => {
-    const green = new THREE.Color("#44592a")
-    const gold = new THREE.Color("#7a6a36")
+    const green = new THREE.Color(GRASS_BASE)
+    const gold = new THREE.Color(GRASS_DRY)
     const out = new THREE.Color()
     return (x: number, z: number) => out.copy(green).lerp(gold, dryness(patch, x, z))
   }, [patch])
-  // Smaller field on the software tier — less ground to cover in blades = less
-  // overdraw for the CPU rasterizer.
+
+  // Tufts scattered across the near/mid dirt — sparse, so the ground shows.
   const grassBounds = useMemo(
-    () => ({ xMin: -10, xMax: 10, zMin: rich ? -16 : -9, zMax: 4.5 }),
-    [rich]
-  )
-  // Grass lighting, matched to the blue-sky day (see environment.tsx surface stop).
-  const grassSun = useMemo(() => new THREE.Color("#b7a878"), [])
-  const grassAmbient = useMemo(() => new THREE.Color("#54687e"), [])
-  const grassTip = useMemo(() => new THREE.Color("#c9b46a"), [])
-
-  // Where the boulders scatter — near/mid field, off the central corridor.
-  const rockBounds = useMemo(
-    () => ({ xMin: -8, xMax: 8, zMin: -6, zMax: 4 }),
-    []
+    () => ({ xMin: -16, xMax: 16, zMin: full ? -22 : -16, zMax: 8 }),
+    [full]
   )
 
-  // A small herd grazing the mid-field — kept right of centre and back from the
-  // camera so it never crowds the level's text, facing mostly one way like a
-  // real herd into the wind. It moves whether or not anyone is watching.
-  const herd = useMemo<Horse[]>(() => {
-    const rng = makeRng("floor-surface-herd")
-    return Array.from({ length: herdCount }, () => {
-      const x = seededRange(rng, -2, 6)
-      const z = seededRange(rng, -13, -6)
-      return {
-        x,
-        z,
-        gy: groundY + terrainHeight(terrain, x, z),
-        dir: rng() < 0.78 ? 1 : -1,
-        scale: seededRange(rng, 0.8, 1.1),
-        tone: HORSE_COATS[Math.floor(rng() * HORSE_COATS.length)],
-        driftAmp: seededRange(rng, 0.25, 0.55),
-        driftFreq: seededRange(rng, 0.04, 0.09),
-        driftPhase: seededRange(rng, 0, TAU),
-        bobPhase: seededRange(rng, 0, TAU),
-      }
-    })
-  }, [herdCount, groundY, terrain])
-
-  // A far flock, indifferent to the visitor: a closed loop high over the hills.
-  const birds = useMemo<Bird[]>(() => {
-    const rng = makeRng("floor-surface-birds")
-    const n = full ? 6 : 5
-    return Array.from({ length: n }, () => ({
-      cx: seededRange(rng, -4, 4),
-      cz: seededRange(rng, -30, -24),
-      rx: seededRange(rng, 10, 15),
-      rz: seededRange(rng, 3.5, 6),
-      y: groundY + seededRange(rng, 8, 11),
-      speed: seededRange(rng, 0.05, 0.09),
-      phase: seededRange(rng, 0, TAU),
-      bob: seededRange(rng, 0.2, 0.5),
-    }))
-  }, [full, groundY])
-
-  // The worn path — a soft-edged dirt strip fading in from the foreground and
-  // dissolving into the field. Alpha in the texture; dirt tone in the material.
-  const pathTex = useMemo(() => {
-    if (typeof document === "undefined") return null
-    const c = document.createElement("canvas")
-    c.width = 64
-    c.height = 128
-    const ctx = c.getContext("2d")
-    if (!ctx) return null
-    // Soft left/right edges (walked centre, feathered sides)…
-    const gx = ctx.createLinearGradient(0, 0, 64, 0)
-    gx.addColorStop(0, "rgba(0,0,0,0)")
-    gx.addColorStop(0.5, "rgba(0,0,0,0.5)")
-    gx.addColorStop(1, "rgba(0,0,0,0)")
-    ctx.fillStyle = gx
-    ctx.fillRect(0, 0, 64, 128)
-    // …and a fade at the far (top) end so the path emerges from the grass.
-    const gy = ctx.createLinearGradient(0, 0, 0, 128)
-    gy.addColorStop(0, "rgba(0,0,0,0.35)")
-    gy.addColorStop(0.35, "rgba(0,0,0,1)")
-    gy.addColorStop(1, "rgba(0,0,0,1)")
-    ctx.globalCompositeOperation = "destination-in"
-    ctx.fillStyle = gy
-    ctx.fillRect(0, 0, 64, 128)
-    return new THREE.CanvasTexture(c)
-  }, [])
-
-  // A chevron bird stamp — a small dark V, seen at distance as a wingbeat.
-  const birdTex = useMemo(() => {
-    if (typeof document === "undefined") return null
-    const c = document.createElement("canvas")
-    c.width = 32
-    c.height = 32
-    const ctx = c.getContext("2d")
-    if (!ctx) return null
-    ctx.strokeStyle = "#2a2018"
-    ctx.lineWidth = 4
-    ctx.lineCap = "round"
-    ctx.beginPath()
-    ctx.moveTo(5, 20)
-    ctx.lineTo(16, 12)
-    ctx.lineTo(27, 20)
-    ctx.stroke()
-    return new THREE.CanvasTexture(c)
-  }, [])
-
-  // A soft dark blob — reused for the drifting cloud shadows and the contact
-  // shadow grounding each horse. Radial, feathered to nothing at the edge.
-  const softDarkTex = useMemo(() => {
-    if (typeof document === "undefined") return null
-    const c = document.createElement("canvas")
-    c.width = 64
-    c.height = 64
-    const ctx = c.getContext("2d")
-    if (!ctx) return null
-    const g = ctx.createRadialGradient(32, 32, 2, 32, 32, 31)
-    g.addColorStop(0, "rgba(0,0,0,0.85)")
-    g.addColorStop(0.55, "rgba(0,0,0,0.4)")
-    g.addColorStop(1, "rgba(0,0,0,0)")
-    ctx.fillStyle = g
-    ctx.fillRect(0, 0, 64, 64)
-    return new THREE.CanvasTexture(c)
-  }, [])
-
-  // A soft round light sprite for the pollen motes drifting in the sun.
-  const moteTex = useMemo(() => {
-    if (typeof document === "undefined") return null
-    const c = document.createElement("canvas")
-    c.width = 32
-    c.height = 32
-    const ctx = c.getContext("2d")
-    if (!ctx) return null
-    const g = ctx.createRadialGradient(16, 16, 0, 16, 16, 16)
-    g.addColorStop(0, "rgba(255,246,222,1)")
-    g.addColorStop(0.4, "rgba(255,232,180,0.5)")
-    g.addColorStop(1, "rgba(255,232,180,0)")
-    ctx.fillStyle = g
-    ctx.fillRect(0, 0, 32, 32)
-    return new THREE.CanvasTexture(c)
-  }, [])
-
-  // Pollen / dust catching the sun — a slow drift of warm motes in the air over
-  // the sward. Magical, and cheap on a real GPU (rich tier only — additive
-  // sprites are overdraw a software rasterizer shouldn't pay for).
-  const motes = useMemo(() => {
-    if (!rich) return null
-    const rng = makeRng("floor-surface-motes")
-    const n = full ? 120 : 80
-    const base = new Float32Array(n * 3)
-    const drift: { ax: number; ay: number; az: number; px: number; py: number; pz: number; sp: number }[] = []
-    for (let i = 0; i < n; i++) {
-      base[i * 3] = seededRange(rng, -9, 9)
-      base[i * 3 + 1] = groundY + seededRange(rng, 0.4, 4.4)
-      base[i * 3 + 2] = seededRange(rng, -11, 4.2)
-      drift.push({
-        ax: seededRange(rng, 0.15, 0.5),
-        ay: seededRange(rng, 0.1, 0.35),
-        az: seededRange(rng, 0.15, 0.5),
-        px: seededRange(rng, 0, TAU),
-        py: seededRange(rng, 0, TAU),
-        pz: seededRange(rng, 0, TAU),
-        sp: seededRange(rng, 0.12, 0.3),
-      })
-    }
-    const geo = new THREE.BufferGeometry()
-    geo.setAttribute("position", new THREE.BufferAttribute(base.slice(), 3))
-    return { geo, base, drift, n }
-  }, [rich, full, groundY])
-
-
-  // Initial bird placement, so under reduced motion the flock hangs at rest.
-  useEffect(() => {
-    if (!birdsRef.current) return
-    for (let i = 0; i < birds.length; i++) {
-      const b = birds[i]
-      dummy.position.set(b.cx + b.rx * Math.cos(b.phase), b.y, b.cz + b.rz * Math.sin(b.phase))
-      dummy.rotation.set(0, 0, 0)
-      dummy.scale.setScalar(0.5)
-      dummy.updateMatrix()
-      birdsRef.current.setMatrixAt(i, dummy.matrix)
-    }
-    birdsRef.current.instanceMatrix.needsUpdate = true
-  }, [birds, dummy])
-
-  useFrame((state) => {
-    if (Math.abs(state.camera.position.y - yCenter) > FLOOR_ACTIVE_MARGIN) return
-    const t = state.clock.elapsedTime
-
-    // The flock rounds its loop — slow, distant, never approaching.
-    if (birdsRef.current && !reduced && birds.length > 0) {
-      for (let i = 0; i < birds.length; i++) {
-        const b = birds[i]
-        const a = t * b.speed + b.phase
-        dummy.position.set(
-          b.cx + b.rx * Math.cos(a),
-          b.y + Math.sin(a * 2) * b.bob,
-          b.cz + b.rz * Math.sin(a)
-        )
-        dummy.rotation.set(0, 0, 0)
-        dummy.scale.setScalar(0.5)
-        dummy.updateMatrix()
-        birdsRef.current.setMatrixAt(i, dummy.matrix)
-      }
-      birdsRef.current.instanceMatrix.needsUpdate = true
-    }
-
-    // Pollen motes drift in the air — a gentle 3D wander around each rest point.
-    if (motes && !reduced) {
-      const arr = motes.geo.attributes.position.array as Float32Array
-      for (let i = 0; i < motes.n; i++) {
-        const d = motes.drift[i]
-        arr[i * 3] = motes.base[i * 3] + Math.sin(t * d.sp + d.px) * d.ax
-        arr[i * 3 + 1] = motes.base[i * 3 + 1] + Math.sin(t * d.sp * 0.7 + d.py) * d.ay
-        arr[i * 3 + 2] = motes.base[i * 3 + 2] + Math.sin(t * d.sp * 1.3 + d.pz) * d.az
-      }
-      motes.geo.attributes.position.needsUpdate = true
-    }
-  })
+  // Lighting uniforms (shared golden-hour palette).
+  const grassSun = useMemo(() => new THREE.Color(SUN_COLOR), [])
+  // A warm muted-olive fill, LIFTED so the tall tufts stay readable against the
+  // bright bloomed sky on hardware (they crushed to black otherwise).
+  const grassAmbient = useMemo(() => new THREE.Color("#a49a6e"), [])
+  void SKY_FILL
+  const grassRim = useMemo(() => new THREE.Color(GRASS_RIM), [])
+  const grassSunDir = useMemo(() => SUN_DIR.clone(), [])
+  const grassFog = useMemo(() => new THREE.Color(HAZE), [])
+  // A warm dark olive matching the photo's shadowed foreground (not bright green).
+  const groundColor = useMemo(() => new THREE.Color("#3f4826"), [])
+  void GROUND_GREEN
+  void GROUND_WARM
 
   return (
     <group>
-      {/* The near ground — an undulating plane with a sharp, real grass PBR
-          texture (Poly Haven aerial_grass_rock, 2k albedo+normal+roughness). It
-          fogs into the HDRI's horizon so the foreground and the photographed
-          distance read as one field. */}
-      <mesh
-        geometry={groundGeo}
-        position={[0, groundY, -22]}
-        rotation={[-Math.PI / 2, 0, 0]}
+      {/* The distant mountains — a real misty-ridge photo, sky keyed out so the
+          sunset shows through. If the image ever fails to load, the procedural
+          layered silhouettes stand in — never a blank horizon. */}
+      <AssetBoundary
+        label="mountains"
+        suspenseFallback={<Mountains />}
+        errorFallback={<Mountains />}
       >
-        <PbrMaterial
-          name="aerial-grass"
-          repeat={[26, 26]}
-          tint="#eef0e2"
-          flatColor="#5a6a3a"
-          flatRoughness={0.9}
-        />
-      </mesh>
+        <MountainsPhoto />
+      </AssetBoundary>
 
-      {/* A worn trail crossing the steppe — dirt fading in from the foreground
-          and dissolving into the field as it recedes. It leads nowhere in
-          particular; someone has just walked this way. */}
-      {pathTex !== null && (
-        <mesh position={[0, groundY + 0.02, -1]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[1.9, 11]} />
-          <meshStandardMaterial
-            map={pathTex}
-            color="#4a3d2c"
-            roughness={1}
-            metalness={0}
-            transparent
-            depthWrite={false}
-            polygonOffset
-            polygonOffsetFactor={-1}
+      {/* The sun — a defined, blooming disc in the sky. */}
+      <Sun />
+
+      {/* The dry-dirt ground — a real CC0 soil texture (albedo + normal), lit warm
+          by the low sun, fogging into the same haze as the distance. Falls back to
+          a flat dirt tone while it loads or if it fails. */}
+      <AssetBoundary
+        label="ground"
+        suspenseFallback={
+          <mesh geometry={groundGeo} position={[0, groundY, -24]} rotation={[-Math.PI / 2, 0, 0]}>
+            <meshStandardMaterial color={groundColor} roughness={1} metalness={0} />
+          </mesh>
+        }
+        errorFallback={
+          <mesh geometry={groundGeo} position={[0, groundY, -24]} rotation={[-Math.PI / 2, 0, 0]}>
+            <meshStandardMaterial color={groundColor} roughness={1} metalness={0} />
+          </mesh>
+        }
+      >
+        <mesh geometry={groundGeo} position={[0, groundY, -24]} rotation={[-Math.PI / 2, 0, 0]}>
+          <PbrMaterial
+            name="dry-dirt"
+            repeat={[15, 14]}
+            tint="#c7a880"
+            flatColor="#5b4a30"
+            flatRoughness={1}
+            normalScale={1.2}
           />
         </mesh>
-      )}
+      </AssetBoundary>
 
-      {/* Sky, clouds, mountains and the distant field all come from the HDRI
-          backdrop now — the foreground below is the only rendered geometry. */}
-
-      {/* A far flock, high over the hills — indifferent to being watched. */}
-      {birdTex !== null && birds.length > 0 && (
-        <instancedMesh
-          ref={birdsRef}
-          args={[undefined, undefined, birds.length]}
-          frustumCulled={false}
-        >
-          <planeGeometry args={[1, 1]} />
-          <meshBasicMaterial map={birdTex} transparent depthWrite={false} opacity={0.7} />
-        </instancedMesh>
-      )}
-
-      {/* Real PBR boulders scattered in the near/mid field (rich tier only —
-          the model's textures are too heavy to justify on the software path). */}
-      {rockCount > 0 && (
-        <Rocks
-          seed="floor-surface"
-          count={rockCount}
-          bounds={rockBounds}
-          heightAt={heightAt}
-        />
-      )}
-
-      {/* The herd — horses grazing the mid-field, indifferent to the visitor. */}
-      {herd.map((m, i) => (
-        <GrazingHorse key={i} m={m} reduced={reduced} shadowTex={softDarkTex} />
-      ))}
-
-      {/* Pollen catching the sun — warm motes drifting over the sward. */}
-      {motes && moteTex && (
-        <points geometry={motes.geo}>
-          <pointsMaterial
-            size={0.08}
-            map={moteTex}
-            color="#ffe6b0"
-            transparent
-            opacity={0.6}
-            depthWrite={false}
-            blending={THREE.AdditiveBlending}
-            sizeAttenuation
-          />
-        </points>
-      )}
-
-      {/* The sward — a dense GPU grass field, wind in the vertex shader. */}
+      {/* The sward — dense GPU grass, wind + backlit glow in the shader. */}
       {bladeCount > 0 && (
         <GrassField
-          seed="floor-surface"
+          seed="surface"
           count={bladeCount}
           bounds={grassBounds}
           heightAt={heightAt}
@@ -495,7 +215,11 @@ export function FloorSurface({ yTop, yBottom, yCenter }: FloorProps) {
           heightScale={grassHeightScale}
           sunColor={grassSun}
           ambient={grassAmbient}
-          tipWarm={grassTip}
+          rim={grassRim}
+          sunDir={grassSunDir}
+          fogColor={grassFog}
+          fogNear={SURFACE_FOG_NEAR}
+          fogFar={SURFACE_FOG_FAR}
           reduced={reduced}
         />
       )}

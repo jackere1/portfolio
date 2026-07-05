@@ -1,0 +1,4 @@
+misty-ridges.jpg
+Source: Wikimedia Commons — "Misty Mountains (Unsplash zR40wedS1aQ)"
+Original: Unsplash. License: CC0 (public domain dedication). No attribution required.
+Used as the surface floor's distant mountain backdrop (sky luminance-keyed at runtime).

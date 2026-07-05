@@ -64,8 +64,11 @@ export function CameraRig() {
     )
     camera.position.lerp(target, 0.1)
 
-    // Look straight into the shaft, tilted slightly down toward the descent.
-    lookRef.current.lerp(new THREE.Vector3(0, camY - 3, 0), 0.1)
+    // At the surface, look out toward the horizon — the low sun sits in the sky
+    // there. As you descend, tilt down into the shaft toward the dive.
+    const ss = Math.min(1, Math.max(0, progress / 0.13))
+    const lookDrop = 1.0 + 2.0 * (ss * ss * (3 - 2 * ss))
+    lookRef.current.lerp(new THREE.Vector3(0, camY - lookDrop, 0), 0.1)
     camera.lookAt(lookRef.current)
   })
 

@@ -1,11 +1,7 @@
 "use client"
 
 import { Canvas } from "@react-three/fiber"
-import {
-  Preload,
-  PerformanceMonitor,
-  Environment as HdriEnvironment,
-} from "@react-three/drei"
+import { PerformanceMonitor } from "@react-three/drei"
 import { Suspense, useEffect, useRef, useState } from "react"
 import Lenis from "lenis"
 import { CameraRig } from "./camera-rig"
@@ -13,7 +9,7 @@ import { Environment } from "./environment"
 import { PostProcessing } from "./post-processing"
 import { Shaft } from "../world/shaft"
 import { Seam } from "../world/seam"
-import { SkyDome } from "../world/sky-dome"
+import { SurfaceSky } from "../world/sky"
 import { Levels } from "../sections/levels"
 import { NavOverlay } from "../ui/nav-overlay"
 import { ScrollHint } from "../ui/scroll-hint"
@@ -39,17 +35,10 @@ function Scene({ setDpr }: { setDpr: (dpr: number) => void }) {
       />
       <CameraRig />
       <Environment />
-      {/* The surface's world is a real photographed place: a landscape HDRI used
-          as BOTH the visible backdrop (sky + mountains + distant field) and the
-          light. Peak realism for one texture, near-zero per-frame compute. Its
-          background + lighting intensity fade to nothing underground (environment
-          .tsx), where the shaft is a sealed box. The weakest tier can't afford
-          the HDRI, so it keeps the cheap gradient sky-dome. */}
-      {quality.textureMaps.length > 0 ? (
-        <HdriEnvironment files="/hdri/landscape_2k.hdr" background />
-      ) : (
-        <SkyDome />
-      )}
+      {/* The surface's roof: a fully procedural sunset sky (zero assets, a few ops
+          per pixel — runs on a CPU rasterizer too). It fades out and switches off
+          as the cab descends past ground level into the sealed shaft. */}
+      <SurfaceSky />
 
       {/* The shaft — a stack of distinct floor stages you descend through,
           divided by storey slabs, with ground level at the boundary. */}
@@ -58,8 +47,6 @@ function Scene({ setDpr }: { setDpr: (dpr: number) => void }) {
 
       {/* Post-processing effects */}
       <PostProcessing quality={quality} />
-
-      <Preload all />
     </>
   )
 }

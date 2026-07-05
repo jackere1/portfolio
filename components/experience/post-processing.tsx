@@ -20,9 +20,9 @@ export function PostProcessing({ quality }: { quality: QualityConfig }) {
   return (
     <EffectComposer multisampling={0}>
       <Bloom
-        luminanceThreshold={0.7}
-        luminanceSmoothing={0.4}
-        intensity={0.9}
+        luminanceThreshold={0.82}
+        luminanceSmoothing={0.3}
+        intensity={0.5}
         mipmapBlur
       />
 

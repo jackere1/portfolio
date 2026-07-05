@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic"
 import { useGpuTier } from "@/hooks/use-gpu-tier"
 import { MobileFallback } from "@/components/ui/mobile-fallback"
+import { CanvasCrashBoundary } from "@/components/experience/asset-boundary"
 
 const Experience = dynamic(
   () =>
@@ -34,9 +35,14 @@ export default function HomePage() {
     return <MobileFallback />
   }
 
+  // If the WebGL experience crashes for any reason — a driver fault, a lost
+  // context, an asset failure that slips past the in-scene boundaries — fall all
+  // the way back to the CSS dive rather than a blank page. The dive still reads.
   return (
     <div className="noise-overlay">
-      <Experience />
+      <CanvasCrashBoundary fallback={<MobileFallback />}>
+        <Experience />
+      </CanvasCrashBoundary>
     </div>
   )
 }

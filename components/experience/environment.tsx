@@ -4,7 +4,6 @@ import { useMemo, useRef } from "react"
 import { useFrame, useThree } from "@react-three/fiber"
 import * as THREE from "three"
 import { useScrollStore } from "@/hooks/use-scroll-store"
-import { useGpuTier } from "@/hooks/use-gpu-tier"
 
 /**
  * The light of the descent. Three keyframes driven by depth:
@@ -21,41 +20,40 @@ import { useGpuTier } from "@/hooks/use-gpu-tier"
 const GROUND_P = 0.2
 
 // Numeric stops: [surface, ground, deep].
-const FOG_NEAR = [22, 8, 4]
-const FOG_FAR = [170, 50, 16]
-// The surface now gets most of its soft/sky light from the HDRI (image-based),
-// so the artificial ambient and hemisphere are pulled back there to avoid
-// double-lighting; the directional key still throws the sharp sun.
-const AMB_I = [0.42, 0.2, 0.07]
-const KEY_I = [1.1, 0.3, 0.12]
-const FILL_I = [0.18, 0.14, 0.14]
+// Surface stop = golden hour (see lib/surface-light.ts): a warm low sun BACKLIGHTS
+// the meadow, a cool sky fills the shadows, a warm haze eats the distance.
+const FOG_NEAR = [28, 8, 4]
+const FOG_FAR = [82, 50, 16]
+// Surface ambient/hemisphere are LIFTED so the backlit dirt + grass stay readable
+// under the bright bloomed sky (they crushed to black on hardware otherwise).
+const AMB_I = [0.68, 0.2, 0.07]
+const KEY_I = [1.2, 0.3, 0.12]
+const FILL_I = [0.28, 0.14, 0.14]
 const LAMP_I = [0.6, 2.4, 3.4]
-// Sky→ground hemisphere fill, now light (the HDRI does most of it). Off underground.
-const HEMI_I = [0.2, 0.12, 0]
-// HDRI environment (image-based) intensity by depth: full at the surface, gone
-// in the sealed deep. Drives scene.environmentIntensity.
-const ENV_I = [1.05, 0.28, 0]
-// The visible HDRI background: full at the surface (the real place), fading as
-// you cross the seam into the sealed shaft. Drives scene.backgroundIntensity.
+// Sky→ground hemisphere fill. Strong at the surface (the cool sky bounce that
+// keeps backlit grass from going black), off underground.
+const HEMI_I = [0.85, 0.12, 0]
+// (No image-based environment any more — the surface is lit by these lights.)
+const ENV_I = [0, 0, 0]
+// scene.backgroundIntensity — the color background is hidden behind the sky dome
+// at the surface; this only matters underground where it darkens to the deep.
 const BG_I = [1, 0.3, 0]
-// KEY_POS[0] is the daytime sun, high and slightly in front so it lights the
-// faces the camera sees. It must match uSunDir in components/world/sky-dome.tsx:
-// same sun, same sky.
+// KEY_POS[0] is the low golden sun, in −z (down the shaft) so it backlights the
+// meadow. Must match SUN_DIR in lib/surface-light.ts — same sun, same sky.
 const KEY_POS: [number, number, number][] = [
-  [4, 12, -5],
+  [3.2, 4.0, -19.3],
   [8, 14, 6],
   [5, 20, 5],
 ]
 
 const col = (hex: string) => new THREE.Color(hex)
-// BG[0]/FOG[0] are the surface air. FOG[0] must match uFog in
-// components/world/sky-dome.tsx so the hills at the fog limit melt into the
-// sky band above them — one continuous blue haze, dome to ground.
-const BG = ["#a6c3dc", "#2a2418", "#0a0a0c"].map(col)
-const FOG = ["#cdd4cb", "#14100a", "#08080a"].map(col)
-const AMB = ["#dfe9f4", "#c8a050", "#c8a050"].map(col)
-const KEY = ["#fff4de", "#e8b040", "#e8b040"].map(col)
-const FILL = ["#b4c8e4", "#4060c0", "#4060c0"].map(col)
+// FOG[0] is the surface air — it MUST match HAZE in lib/surface-light.ts so the
+// mountains and grass at the fog limit melt into the same warm haze.
+const BG = ["#e7bd8e", "#2a2418", "#0a0a0c"].map(col)
+const FOG = ["#e7bd8e", "#14100a", "#08080a"].map(col)
+const AMB = ["#f0d2a0", "#c8a050", "#c8a050"].map(col)
+const KEY = ["#ffbf76", "#e8b040", "#e8b040"].map(col)
+const FILL = ["#8a9ac8", "#4060c0", "#4060c0"].map(col)
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 
@@ -67,11 +65,6 @@ function segment(p: number): [number, number, number] {
 
 export function Environment() {
   const { scene, camera } = useThree()
-  const { quality } = useGpuTier()
-  // On the rich tier the landscape HDRI IS the background (set by drei); we only
-  // fade its intensity here. On the weakest tier there's no HDRI, so we drive the
-  // gradient colour background ourselves.
-  const hasHdri = quality.textureMaps.length > 0
   const ambRef = useRef<THREE.AmbientLight>(null)
   const keyRef = useRef<THREE.DirectionalLight>(null)
   const fillRef = useRef<THREE.DirectionalLight>(null)
@@ -85,12 +78,10 @@ export function Environment() {
     const p = useScrollStore.getState().progress
     const [i0, i1, t] = segment(p)
 
-    // Background: the HDRI (rich) owns scene.background — we only fade its
-    // brightness; without it, drive the gradient colour ourselves.
-    if (!hasHdri) {
-      bg.lerpColors(BG[i0], BG[i1], t)
-      if (scene.background !== bg) scene.background = bg
-    }
+    // The sky dome covers the view at the surface; scene.background only shows
+    // underground, where it darkens to the deep. We always drive it now.
+    bg.lerpColors(BG[i0], BG[i1], t)
+    if (scene.background !== bg) scene.background = bg
     ;(scene as THREE.Scene & { backgroundIntensity: number }).backgroundIntensity =
       lerp(BG_I[i0], BG_I[i1], t)
 
@@ -140,8 +131,9 @@ export function Environment() {
       <ambientLight ref={ambRef} intensity={0.55} color="#e8d8c0" />
       <directionalLight ref={keyRef} position={[12, 6, 8]} intensity={0.9} color="#ffd9a0" />
       <directionalLight ref={fillRef} position={[-5, -10, 5]} intensity={0.1} color="#9fb8d8" />
-      {/* Outdoor sky/ground fill for the surface — off underground. */}
-      <hemisphereLight ref={hemiRef} args={["#9fc2e2", "#5a5236", 0.5]} />
+      {/* Cool twilight sky / warm ground fill for the surface — off underground.
+          The cool sky bounce is what keeps the backlit grass from going black. */}
+      <hemisphereLight ref={hemiRef} args={["#7a86b0", "#4a4130", 0.5]} />
 
       {/* The cab lamp — rides just ahead of the cab; the only light deep down. */}
       <pointLight ref={lampRef} intensity={0.6} distance={16} decay={2} color="#e8a020" />
