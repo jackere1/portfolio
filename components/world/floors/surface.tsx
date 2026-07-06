@@ -9,6 +9,7 @@ import { GrassField } from "@/components/world/grass"
 import { Mountains } from "@/components/world/mountains"
 import { MountainsPhoto } from "@/components/world/mountains-photo"
 import { Sun } from "@/components/world/sun"
+import { Motes } from "@/components/world/motes"
 import { AssetBoundary } from "@/components/experience/asset-boundary"
 import { PbrMaterial } from "@/lib/textures"
 import { type FloorProps } from "@/lib/floors"
@@ -222,6 +223,11 @@ export function FloorSurface({ yTop, yBottom }: FloorProps) {
           fogFar={SURFACE_FOG_FAR}
           reduced={reduced}
         />
+      )}
+
+      {/* Dust catching the low sun — rich tiers only (additive overdraw). */}
+      {(full || reducedTier) && (
+        <Motes count={full ? 110 : 60} groundY={groundY} reduced={reduced} />
       )}
     </group>
   )
