@@ -115,6 +115,17 @@ const FRAG = /* glsl */ `
     col += uSunGlow * pow(s, 70.0) * 0.8;
     col += uSunDisc * pow(s, 1600.0) * 1.3;
 
+    // God-ray shafts: irregular warm light fanning out from the sun, slowly
+    // rotating. They live in the sky BEHIND the mountains, so the opaque trees
+    // occlude them and the keyed-out mist reveals them — crepuscular rays through
+    // the forest, for a few ops and no postprocessing pass.
+    vec3 perp = dir - uSunDir * dot(dir, uSunDir);
+    float rayAng = atan(perp.y, perp.x) * 0.159155 + 0.5;   // 0..1 around the sun
+    float rayN = texture2D(uClouds, vec2(rayAng * 2.0 + uTime * 0.004, 0.5)).r * 0.6
+               + texture2D(uClouds, vec2(rayAng * 5.0 - uTime * 0.006, 0.5)).r * 0.4;
+    float shaft = smoothstep(0.40, 0.70, rayN) * pow(s, 1.5);
+    col += uSunGlow * shaft * 0.85;
+
     // Clouds: mapped by azimuth + elevation (well-defined at every angle, unlike a
     // horizon-degenerate planar projection), two scrolling octaves drifting across
     // the sky band so the formations actually read.
