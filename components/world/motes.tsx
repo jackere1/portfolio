@@ -1,12 +1,17 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useRef } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import { makeRng, seededRange } from "@/lib/prng"
+import { useScrollStore } from "@/hooks/use-scroll-store"
 import { FLOOR_ACTIVE_MARGIN } from "@/lib/floors"
 
 const TAU = Math.PI * 2
+const smoothstep = (e0: number, e1: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)))
+  return t * t * (3 - 2 * t)
+}
 
 // Fine dust motes drifting in the low sun — the specks of pollen/dust that catch
 // golden-hour light over a field. A cheap additive point cloud (rich tiers only —
@@ -46,6 +51,7 @@ export function Motes({
   reduced: boolean
 }) {
   const tex = useMemo(() => makeMoteTexture(), [])
+  const matRef = useRef<THREE.PointsMaterial>(null)
   const data = useMemo(() => {
     const rng = makeRng("surface-motes")
     const base = new Float32Array(count * 3)
@@ -70,7 +76,11 @@ export function Motes({
   }, [count, groundY])
 
   useFrame((state) => {
-    if (reduced) return
+    // Fade out fast as the cab sinks below the meadow (so motes don't bleed into
+    // the shaft) — always update opacity, even under reduced motion.
+    const op = 0.7 * (1 - smoothstep(0.04, 0.09, useScrollStore.getState().progress))
+    if (matRef.current) matRef.current.opacity = op
+    if (op <= 0.001 || reduced) return
     if (Math.abs(state.camera.position.y - groundY) > FLOOR_ACTIVE_MARGIN) return
     const t = state.clock.elapsedTime
     const arr = data.geo.attributes.position.array as Float32Array
@@ -87,6 +97,7 @@ export function Motes({
   return (
     <points geometry={data.geo}>
       <pointsMaterial
+        ref={matRef}
         size={0.1}
         map={tex}
         color="#ffe6b0"

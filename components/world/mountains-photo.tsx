@@ -124,8 +124,10 @@ export function MountainsPhoto() {
     }
     const mat = matRef.current
     if (mat) {
+      // Fade out fast as the cab sinks below the meadow, so the surface backdrop
+      // never bleeds into the shaft / the threshold room below it.
       mat.uniforms.uOpacity.value =
-        1 - smoothstep(0.12, 0.26, useScrollStore.getState().progress)
+        1 - smoothstep(0.05, 0.11, useScrollStore.getState().progress)
     }
   })
 

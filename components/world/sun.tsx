@@ -56,7 +56,7 @@ export function Sun() {
     m.quaternion.copy(camera.quaternion) // billboard
     if (matRef.current) {
       matRef.current.opacity =
-        1 - smoothstep(0.1, 0.24, useScrollStore.getState().progress)
+        1 - smoothstep(0.05, 0.11, useScrollStore.getState().progress)
     }
   })
 

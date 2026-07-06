@@ -178,7 +178,7 @@ export function SurfaceSky() {
 
   useFrame((state) => {
     const p = useScrollStore.getState().progress
-    const vis = p < 0.3
+    const vis = p < 0.13
     if (meshRef.current) {
       meshRef.current.visible = vis
       meshRef.current.position.copy(camera.position)
@@ -186,8 +186,9 @@ export function SurfaceSky() {
     if (!vis) return
     // Clouds drift — but freeze under reduced motion.
     if (!reduced) uniforms.uTime.value = state.clock.elapsedTime
-    // Open at the surface; gone by the time the shaft walls have closed the frame.
-    uniforms.uOpacity.value = 1 - smoothstep(0.14, 0.3, p)
+    // Fade out fast as the cab sinks below the meadow, so no surface daylight
+    // bleeds into the shaft / the rooms below.
+    uniforms.uOpacity.value = 1 - smoothstep(0.05, 0.11, p)
   })
 
   return (
