@@ -54,9 +54,32 @@ export const TACK_SIDE_BEARING = 270
 /** The khashaa corral, north-east of the ger. */
 export const CORRAL = { x: 17, z: -12, radius: 5.5 } as const
 
-/** The grazed halo a home wears into the steppe — bare, dung-flecked ground.
- *  Grass density is masked to zero inside `inner` and full beyond `outer`. */
-export const BUUTS = { inner: 9, outer: 26 } as const
+/** The buuts: the bare, dung-flecked ring a home wears into the steppe. This is
+ *  the *visibly trampled* ground only — it drives colour and terrain flattening. */
+export const BUUTS = { inner: 9, outer: 30 } as const
+
+/**
+ * Grazing pressure, which reaches very much further than the trampled ring.
+ *
+ * This is the correction that matters most about this landscape: there is
+ * almost no tall grass around a Mongolian camp, because the herd eats it. The
+ * ground is cropped short and goes bald in patches for hundreds of metres, and
+ * it does not recover while the family is camped there. A waving knee-high
+ * sward outside a ger is one of the loudest tells that nobody who lives there
+ * built the scene.
+ */
+export const GRAZING = { inner: 12, outer: 190 } as const
+
+/**
+ * The only things standing tall are the ones nothing will eat.
+ *
+ * халгай (nettle) wants nitrogen, so it grows exactly where the dung is — a
+ * band around the camp — and because it is never grazed it stays genuinely
+ * green, which makes it the only green in a gold landscape. дэрс (chee grass)
+ * forms coarse unpalatable tussocks further out. Every tall silhouette in this
+ * world is one of those two, never a field of grass.
+ */
+export const NETTLE_RING = { center: 15, width: 12 } as const
 
 /** The hero terrain patch. Beyond this, low-density skirt rings shaded almost
  *  entirely by stepped blue-haze fog. */

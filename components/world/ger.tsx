@@ -86,7 +86,7 @@ export function Ger({
         args={[pole, undefined, build.uni.length]}
         castShadow
       >
-        <meshStandardMaterial color="#8a5a2c" roughness={0.86} metalness={0} />
+        <meshStandardMaterial color="#5e3d1f" roughness={0.88} metalness={0} />
       </instancedMesh>
 
       {/* The khayaa is rolled up for summer, so this is visible from outside —

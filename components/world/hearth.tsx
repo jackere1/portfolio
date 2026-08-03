@@ -135,13 +135,13 @@ export function Hearth({
     const f = reduced ? 0.85 : flicker(clock.current)
 
     if (lightRef.current) {
-      lightRef.current.intensity = night * 5.2 * f
+      lightRef.current.intensity = night * 3.0 * f
     }
     // Emissive intensity is pushed above 1 so that bloom finds it. Below 1 it
     // is just a slightly orange polygon and the whole effect is gone.
     if (crownRef.current) {
       const m = crownRef.current.material as THREE.MeshStandardMaterial
-      m.emissiveIntensity = night * 1.7 * f
+      m.emissiveIntensity = night * 1.05 * f
     }
     for (const s of seamRefs.current) {
       if (!s) continue
@@ -183,15 +183,18 @@ export function Hearth({
 
       {/* The crown, lit from below: the glow that says someone is home, seen
           from outside long before you reach the door. */}
+      {/* A RING at the rim, never a disc across the opening. The opening is the
+          whole point of stop 07 — fill it and you have capped the only hole the
+          sky comes through. */}
       <mesh
         ref={crownRef}
-        position={[0, toonoY - 0.02, 0]}
+        position={[0, toonoY - 0.03, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
       >
-        <circleGeometry args={[toonoRadius * 0.94, 24]} />
+        <ringGeometry args={[toonoRadius * 0.90, toonoRadius * 1.0, 28]} />
         <meshStandardMaterial
           color="#000000"
-          emissive="#ff9436"
+          emissive="#e8761e"
           emissiveIntensity={0}
           roughness={1}
           side={THREE.DoubleSide}

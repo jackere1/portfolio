@@ -91,8 +91,9 @@ expected to print **zero** errors — not "fewer". If it prints any, you added t
 - `components/world/terrain.tsx` — the hero patch plus a square ANNULUS skirt that begins
   exactly where it ends. They share a height function, a colouring rule and world-space UVs,
   and they do not overlap at all — see note 11 below for why that matters.
-- `components/world/grass.tsx` — ~370k instanced blades in two toroidally-wrapped tiles, a
-  dense one underfoot and a sparse one reaching out to the fog.
+- `components/world/grass.tsx` — `Vegetation`: three toroidally-wrapped instanced layers.
+  Two are grazed stubble (dense underfoot, sparse out to the fog); the third is the
+  hard plants, on its own density channel with its own stiffness.
 - `lib/ger.ts` + `components/world/ger.tsx` — the one ger generator and its renderer.
 - `components/world/hearth.tsx` — the fire, the door seams, the crown glow and the smoke.
 
@@ -147,6 +148,13 @@ These each cost real time to find. They are not stylistic.
     every blade at once and re-samples the density mask under it, so blades pop in and out
     mid-travel. Wrapping means a blade only relocates at the tile boundary, past the fade,
     where it is already invisible.
+13. **Density culling is per TUFT (`iClump`), never per blade.** Testing per blade shreds
+    every clump into scattered single stalks, which destroys the tussocks entirely — a
+    tussock's whole character is that it is a dense standing clump.
+14. **Nothing may fill the toono opening.** The crown glow is a RING at the rim. It was once
+    a filled disc, which is a lid on the only hole the sky comes through, and stop 07 is
+    that hole. The galactic plane in `sky.tsx` is also aimed so the band genuinely falls
+    inside what the crown frames from the seat — check both if you move either.
 
 ---
 
@@ -167,6 +175,14 @@ These each cost real time to find. They are not stylistic.
   straight at 20°, never a Turkic dome. The Milky Way is grey-white, never purple.
   **Banned:** lush green grass, wheat-field waving, eagle hunters (Kazakh, far west),
   prayer-flag strings (Tibetan), fences, paved roads, streetlights.
+- **There is almost no tall grass around a Mongolian camp, because the herd eats it.** The
+  ground is cropped to stubble and bald soil for hundreds of metres and does not recover
+  while the family is camped there. A waving knee-high sward outside a ger is one of the
+  loudest tells that nobody who lives there built the scene. Every tall silhouette in this
+  world is something nothing will eat: **халгай** (nettle), which wants nitrogen and so
+  grows exactly where the dung is — which also makes it the only genuinely green thing in a
+  gold landscape — and **дэрс** (chee grass) tussocks further out. `GRAZING` in
+  `lib/world.ts` reaches to 190 m; `BUUTS` is only the visibly trampled ring.
 - **Palette is a timeline, not a swatch grid.** Tokens are grouped by when in the sun arc
   they may exist; `--grass-gold` and `--belt-venus` die at t=0.48 and do not come back.
   There is no white anywhere, and no fourth surface colour — no cards, no panels. Depth is

@@ -79,12 +79,12 @@ const FRAG = /* glsl */ `
   // A soft band of unresolved stars with a dark lane through it. Grey-white and
   // structured — never the purple that gives away a fake sky.
   float milkyWay(vec3 d) {
-    // The galactic pole lies close to due east and near the horizon, which
-    // puts the plane on a roughly north-south great circle passing overhead —
-    // which is where it genuinely is from this latitude on an August evening,
-    // Cygnus near the zenith and the core low in the south. It also means the
-    // band is framed by the toono when you sit at the stove and look up.
-    vec3 pole = normalize(vec3(0.97, -0.02, -0.24));
+    // The pole sits near the horizon toward the south-east, which puts the
+    // plane on a great circle running roughly NE to SW through the zenith —
+    // where it genuinely is from this latitude on an August evening, Cygnus
+    // near the top and the core low in the south-west. It is also, and not by
+    // accident, the half of the sky the toono frames from the seat at stop 07.
+    vec3 pole = normalize(vec3(0.70, 0.02, 0.71));
     float lat = dot(d, pole);
 
     // A smooth band rather than a thresholded one.

@@ -75,9 +75,12 @@ const VERT = /* glsl */ `
   attribute vec2  iScale;   // x = height, y = width
   attribute float iPhase;
   attribute float iTint;
+  attribute float iClump;
 
   uniform float uTileSize;
   uniform vec4  uFade;      // (in0, in1, out0, out1) in metres
+  uniform float uChannel;   // 0 = grazed grass (G), 1 = hard plants (A)
+  uniform float uStiffness; // 1 = grass, ~0.25 = a nettle stem
   uniform float uTime;
   uniform float uWind;
   uniform vec3  uCamPos;
@@ -98,7 +101,7 @@ const VERT = /* glsl */ `
 
     vec4 terrain = sampleTerrain(worldXZ);
     float ground  = terrain.r;
-    float density = terrain.g;
+    float density = mix(terrain.g, terrain.a, uChannel);
 
     // A window rather than a single falloff, so several tiles can be layered:
     // a dense one underfoot and a sparse one reaching out to the fog.
@@ -106,9 +109,11 @@ const VERT = /* glsl */ `
     float window = smoothstep(uFade.x, uFade.y, dist) *
                    (1.0 - smoothstep(uFade.z, uFade.w, dist));
 
-    // Dithered: blades drop out individually rather than along an edge, which
-    // reads as thinning instead of a wall.
-    float keep = step(1.0 - density * window, fract(iPhase * 91.7));
+    // Dithered against the TUFT's own value, not the blade's. Every blade in a
+    // clump shares iClump, so a tuft survives or dies whole. Testing per blade
+    // shreds every clump into scattered stalks — which is fatal for the
+    // tussocks, whose entire character is that they are dense standing clumps.
+    float keep = step(1.0 - density * window, iClump);
 
     float height = iScale.x * keep;
     float width  = iScale.y;
@@ -137,11 +142,12 @@ const VERT = /* glsl */ `
     // about vertical. Bias the gust so it leans downwind and recovers.
     float gustAmt = gust * 0.5 + 0.5;
 
-    float bend = (swell * 0.30 + gustAmt * 0.62 + micro * 0.20) * uWind;
+    float bend = (swell * 0.30 + gustAmt * 0.62 + micro * 0.20) * uWind * uStiffness;
 
     // A permanent lean: grass grows leaning with the prevailing wind, with
-    // enough per-tuft variation that it never reads as combed.
-    bend += 0.34 + (fract(iPhase * 17.3) - 0.5) * 0.42;
+    // enough per-tuft variation that it never reads as combed. A woody stem
+    // barely leans at all, which is half of what makes it read as not-grass.
+    bend += (0.34 + (fract(iPhase * 17.3) - 0.5) * 0.42) * uStiffness;
 
     // Anchored at the root — quadratic in height, so the base stays planted.
     bend *= up * up;
@@ -189,6 +195,7 @@ const FRAG = /* glsl */ `
   uniform vec3  uFogColor;
   uniform float uFogDensity;
   uniform vec3  uCamPos;
+  uniform float uSpecies;   // 0 = grass, 1 = hard plants
 
   void main() {
     vec3 V = normalize(uCamPos - vWorld);
@@ -197,16 +204,29 @@ const FRAG = /* glsl */ `
     // A blade is a two-sided sliver; which face you see is not meaningful.
     if (dot(N, V) < 0.0) N = -N;
 
-    // Late-summer bunch grass: gold-khaki, dry, never green. Darker at the
-    // root where the sward shades itself, paler at the seed head.
+    // Late-summer grazed grass: gold-khaki, dry, never green. Darker at the
+    // root where the sward shades itself, paler at the cropped tip.
     vec3 base = mix(
       vec3(0.115, 0.098, 0.054),
       vec3(0.44,  0.355, 0.155),
       vUp
     );
     base = mix(base, vec3(0.52, 0.44, 0.22), vTint * 0.45);
-    // The seed head itself: Stipa carries a pale, almost silver crown.
     base = mix(base, vec3(0.60, 0.545, 0.36), smoothstep(0.80, 1.0, vUp) * 0.55);
+
+    if (uSpecies > 0.5) {
+      // The ungrazed. халгай near the camp is genuinely GREEN — it is never
+      // eaten and it is standing in dung-rich ground, so it is the only green
+      // in a gold landscape, and it is green precisely where the animals are.
+      // Further out the same layer is дэрс: a coarse, straw-coloured tussock.
+      float nearCamp = 1.0 - smoothstep(9.0, 34.0, length(vWorld.xz));
+      vec3 nettle = mix(vec3(0.055, 0.088, 0.036),
+                        vec3(0.16, 0.26, 0.10), vUp);
+      vec3 chee   = mix(vec3(0.10, 0.086, 0.05),
+                        vec3(0.40, 0.34, 0.17), vUp);
+      base = mix(chee, nettle, nearCamp);
+      base = mix(base, base * 1.25, vTint * 0.5);
+    }
 
     // --- direct -----------------------------------------------------------
     float ndl = max(dot(N, L), 0.0);
@@ -252,9 +272,31 @@ interface TileProps {
   /** (in0, in1, out0, out1) — the distance window this tile is visible over. */
   fade: [number, number, number, number]
   perTuft: number
+  /** 0 = grazed grass (density from G), 1 = hard plants (density from A). */
+  species: 0 | 1
+  /** Height range in metres, [short, tall]. */
+  height: [number, number]
+  /** Fraction of tufts drawn from the taller class. */
+  tallShare: number
+  width: [number, number]
+  /** 1 = grass, lower = a woody stem that barely moves. */
+  stiffness: number
+  spread: number
 }
 
-function GrassTile({ seed, count, tileHalf, fade, perTuft }: TileProps) {
+function GrassTile({
+  seed,
+  count,
+  tileHalf,
+  fade,
+  perTuft,
+  species,
+  height,
+  tallShare,
+  width,
+  stiffness,
+  spread: spreadBase,
+}: TileProps) {
   const camera = useThree((s) => s.camera)
   const reduced = useReducedMotion()
   const sun = useMemo(() => createSunState(), [])
@@ -274,6 +316,7 @@ function GrassTile({ seed, count, tileHalf, fade, perTuft }: TileProps) {
     const scale = new Float32Array(count * 2)
     const phase = new Float32Array(count)
     const tint = new Float32Array(count)
+    const clump = new Float32Array(count)
 
     // Bunch grass grows in TUFTS with bare soil between them — it is not a
     // lawn, and scattering blades uniformly is the fastest way to make a
@@ -289,10 +332,14 @@ function GrassTile({ seed, count, tileHalf, fade, perTuft }: TileProps) {
 
       // Height classes, so the field has a silhouette instead of a plateau.
       const tall = rng()
-      const tuftHeight = tall < 0.26 ? 0.58 + rng() * 0.34 : 0.26 + rng() * 0.3
+      const tuftHeight =
+        tall < tallShare
+          ? height[1] * (0.78 + rng() * 0.42)
+          : height[0] * (0.7 + rng() * 0.7)
       const tuftLean = rng()
       const tuftTint = rng()
-      const spread = 0.055 + rng() * 0.075
+      const tuftClump = rng()
+      const spread = spreadBase * (0.6 + rng() * 0.9)
 
       for (let b = 0; b < perTuft && i < count; b++, i++) {
         // Blades splay out of a shared root, denser at the middle.
@@ -303,11 +350,12 @@ function GrassTile({ seed, count, tileHalf, fade, perTuft }: TileProps) {
 
         rot[i] = rng() * Math.PI * 2
         scale[i * 2] = tuftHeight * (0.62 + rng() * 0.55)
-        scale[i * 2 + 1] = 0.009 + rng() * 0.008
+        scale[i * 2 + 1] = width[0] + rng() * (width[1] - width[0])
 
         // Sharing the tuft's phase keeps a clump moving as one thing in wind.
         phase[i] = (tuftLean + rng() * 0.22) % 1
         tint[i] = (tuftTint + rng() * 0.2) % 1
+        clump[i] = tuftClump
       }
     }
 
@@ -316,12 +364,13 @@ function GrassTile({ seed, count, tileHalf, fade, perTuft }: TileProps) {
     geo.setAttribute("iScale", new THREE.InstancedBufferAttribute(scale, 2))
     geo.setAttribute("iPhase", new THREE.InstancedBufferAttribute(phase, 1))
     geo.setAttribute("iTint", new THREE.InstancedBufferAttribute(tint, 1))
+    geo.setAttribute("iClump", new THREE.InstancedBufferAttribute(clump, 1))
 
     // The mesh is wrapped around the camera every frame, so it is never off
     // screen and must never be culled against a stale bound.
     geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e6)
     return geo
-  }, [seed, count, tileHalf, perTuft])
+  }, [seed, count, tileHalf, perTuft, height, tallShare, width, spreadBase])
 
   const uniforms = useMemo(
     () => ({
@@ -330,6 +379,9 @@ function GrassTile({ seed, count, tileHalf, fade, perTuft }: TileProps) {
       uMapRes: { value: MAP_RES },
       uTileSize: { value: tileHalf * 2 },
       uFade: { value: new THREE.Vector4(...fade) },
+      uChannel: { value: species },
+      uSpecies: { value: species },
+      uStiffness: { value: stiffness },
       uTime: { value: 0 },
       uWind: { value: 1 },
       uCamPos: { value: new THREE.Vector3() },
@@ -345,7 +397,7 @@ function GrassTile({ seed, count, tileHalf, fade, perTuft }: TileProps) {
       uFogColor: { value: new THREE.Color(0.3, 0.25, 0.21) },
       uFogDensity: { value: 0.0022 },
     }),
-    [tileHalf, fade]
+    [tileHalf, fade, species, stiffness]
   )
 
   useFrame((_, delta) => {
@@ -386,33 +438,73 @@ function GrassTile({ seed, count, tileHalf, fade, perTuft }: TileProps) {
   )
 }
 
-/** Two layers: a dense one underfoot and a sparse one reaching out to the fog.
- *  Both wrap independently, so neither ever shows a boundary. */
-export function Grass() {
+/**
+ * Three layers, and the proportions are the point.
+ *
+ * There is almost no tall grass around a Mongolian camp: the herd eats it. The
+ * ground is cropped to stubble and bald soil for hundreds of metres, and it
+ * stays that way while the family is camped there. So the two grass layers are
+ * SHORT — ankle height, patchy, with bare ground showing through everywhere.
+ *
+ * Everything that stands tall is something nothing will eat: халгай, which
+ * follows the dung and is therefore the only green thing in a gold landscape,
+ * and дэрс further out. They come from their own density channel and their own
+ * stiffness, because a woody stem does not ripple like a blade.
+ */
+export function Vegetation() {
   const { quality } = useGpuTier()
 
-  const [near, far] = useMemo(() => {
-    if (quality.textureMaps.length === 0) return [40_000, 40_000]
+  const [near, far, hard] = useMemo(() => {
+    if (quality.textureMaps.length === 0) return [40_000, 40_000, 12_000]
     return quality.textureSize >= 1024
-      ? [190_000, 180_000]
-      : [90_000, 80_000]
+      ? [165_000, 150_000, 68_000]
+      : [80_000, 70_000, 32_000]
   }, [quality])
 
   return (
     <>
+      {/* Grazed stubble, close in. Short, dense where it survives at all. */}
       <GrassTile
-        seed="ailchin-grass-near"
+        seed="ailchin-graze-near"
         count={near}
         tileHalf={20}
         fade={[-1, 0, 15, 20]}
         perTuft={7}
+        species={0}
+        height={[0.11, 0.3]}
+        tallShare={0.2}
+        width={[0.01, 0.018]}
+        stiffness={1}
+        spread={0.075}
       />
+      {/* The same sward, thinning out toward the fog. */}
       <GrassTile
-        seed="ailchin-grass-far"
+        seed="ailchin-graze-far"
         count={far}
         tileHalf={58}
         fade={[12, 19, 44, 58]}
         perTuft={5}
+        species={0}
+        height={[0.12, 0.32]}
+        tallShare={0.18}
+        width={[0.014, 0.026]}
+        stiffness={1}
+        spread={0.09}
+      />
+      {/* The ungrazed: халгай near the dung, дэрс out on the open ground.
+          These carry every tall silhouette in the world. */}
+      <GrassTile
+        seed="ailchin-hardplants"
+        count={hard}
+        tileHalf={60}
+        fade={[-1, 0, 44, 60]}
+        perTuft={20}
+        species={1}
+        height={[0.46, 1.05]}
+        tallShare={0.45}
+        width={[0.02, 0.042]}
+        stiffness={0.28}
+        spread={0.11}
       />
     </>
   )

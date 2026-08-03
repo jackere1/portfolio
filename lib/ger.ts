@@ -217,7 +217,7 @@ export function generateGer(params: GerParams): GerBuild {
   // Radial spokes inside the ring, plus the two crossing bars. This is the
   // shape the whole site's mark is drawn from.
   const toonoSpokes: THREE.Matrix4[] = []
-  const SPOKES = 12
+  const SPOKES = 8
   for (let i = 0; i < SPOKES; i++) {
     const theta = (i / SPOKES) * Math.PI
     dir.set(Math.sin(theta), 0, Math.cos(theta))

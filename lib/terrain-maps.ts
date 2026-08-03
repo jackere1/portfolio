@@ -3,9 +3,9 @@
 // touching any of them.
 //
 //   R = ground height, metres
-//   G = grass density, 0..1
+//   G = grazed grass density, 0..1
 //   B = slope, 0..1
-//   A = bare-soil amount, 0..1  (the buuts halo and the ruts)
+//   A = hard-plant density, 0..1  (халгай and дэрс — the ungrazed tall stuff)
 //
 // Sampled with NEAREST and bilinear-filtered by hand in the shader: float
 // textures are only linearly filterable behind an extension, and a silent
@@ -13,8 +13,15 @@
 // metre, which is very visible on a blade half a metre tall.
 
 import * as THREE from "three"
+import { hashSeed } from "./prng"
 import { heightAt, slopeAt } from "./heightfield"
-import { BUUTS, TERRAIN_SIZE, TRACK_FROM, TRACK_TO } from "./world"
+import {
+  GRAZING,
+  NETTLE_RING,
+  TERRAIN_SIZE,
+  TRACK_FROM,
+  TRACK_TO,
+} from "./world"
 
 export const MAP_RES = 1024
 /** World extent the map covers, centred on the ger. */
@@ -76,6 +83,30 @@ function smoothstep(a: number, b: number, x: number): number {
   return k * k * (3 - 2 * k)
 }
 
+// --- patchiness -------------------------------------------------------------
+// Grazed ground is not an even carpet with a uniform haircut; it is a mess of
+// cropped tufts and outright bald soil. That patchiness is its own noise field.
+
+const PATCH_SEED = hashSeed("ailchin-vegetation")
+
+function hash2(ix: number, iz: number): number {
+  let h = PATCH_SEED ^ Math.imul(ix | 0, 0x27d4eb2d)
+  h = Math.imul(h ^ (iz | 0), 0x165667b1)
+  h = Math.imul(h ^ (h >>> 15), 0x2545f491)
+  h ^= h >>> 13
+  return (h >>> 0) / 4294967296
+}
+
+function noise2(x: number, z: number): number {
+  const x0 = Math.floor(x)
+  const z0 = Math.floor(z)
+  const fx = smoothstep(0, 1, x - x0)
+  const fz = smoothstep(0, 1, z - z0)
+  const a = hash2(x0, z0) + (hash2(x0 + 1, z0) - hash2(x0, z0)) * fx
+  const b = hash2(x0, z0 + 1) + (hash2(x0 + 1, z0 + 1) - hash2(x0, z0 + 1)) * fx
+  return a + (b - a) * fz
+}
+
 let cached: THREE.DataTexture | null = null
 
 /** Build (once) the height/density texture. Deterministic — same every load. */
@@ -94,11 +125,7 @@ export function getTerrainMap(): THREE.DataTexture {
 
       const h = heightAt(x, z)
       const slope = slopeAt(x, z)
-
-      // The grazed halo: bare, dung-flecked, trampled ground a home wears into
-      // the steppe. Grass returns as you walk out of it.
       const d = Math.hypot(x, z)
-      const halo = smoothstep(BUUTS.inner, BUUTS.outer, d)
 
       // The ruts. No pavement, no signs, no paint — just two hard-packed lines.
       const rut = smoothstep(0.35, 1.5, distanceToRuts(x, z))
@@ -106,13 +133,40 @@ export function getTerrainMap(): THREE.DataTexture {
       // Steep faces hold less; the steppe's slopes are visibly thinner.
       const slopeMask = 1 - smoothstep(0.28, 0.62, slope)
 
-      const density = halo * rut * slopeMask
-      const bare = Math.max(1 - halo, 1 - rut)
+      // --- grazed grass ----------------------------------------------------
+      // The herd works outward from the camp, so the sward is shaved to almost
+      // nothing on the trampled ring and only ever recovers to "short" even
+      // far out. This never reaches 1: it is all working pasture.
+      const graze = 0.12 + 0.78 * smoothstep(GRAZING.inner, GRAZING.outer, d)
+
+      // Bald patches at two scales — broad bare areas and small scuffs.
+      const p1 = noise2(x * 0.055 + 11.3, z * 0.055 - 4.7)
+      const p2 = noise2(x * 0.21 - 3.1, z * 0.21 + 8.9)
+      const patchy = smoothstep(0.3, 0.74, p1 * 0.66 + p2 * 0.34)
+
+      const density = graze * (0.3 + 0.7 * patchy) * rut * slopeMask
+
+      // --- the tall stuff, which is only ever what nothing will eat --------
+      // халгай follows the dung: a band around the camp where the animals
+      // stand. дэрс tussocks are scattered much more thinly across the open
+      // steppe. Both are ungrazed, so both stand while everything else is
+      // cropped to the soil.
+      const ringD = (d - NETTLE_RING.center) / NETTLE_RING.width
+      const dungRing = Math.exp(-ringD * ringD)
+      const nettleClump = smoothstep(0.5, 0.86, noise2(x * 0.35 + 41, z * 0.35 - 17))
+      const nettle = dungRing * nettleClump
+
+      const chee = 0.85 * smoothstep(0.70, 0.92, noise2(x * 0.075 - 63, z * 0.075 + 29))
+
+      const hard =
+        Math.min(1, nettle + chee * smoothstep(GRAZING.inner, 60, d)) *
+        rut *
+        slopeMask
 
       data[o] = h
       data[o + 1] = density
       data[o + 2] = slope
-      data[o + 3] = bare
+      data[o + 3] = hard
     }
   }
 

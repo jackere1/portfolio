@@ -119,13 +119,20 @@ export const STOPS: readonly Stop[] = [
     label: "The Toono",
     // A seat by the stove. Free look opens fully here — this is the only place
     // the visitor may look straight up, and the frame they find is the logo.
-    x: 0.7,
-    z: -0.5,
+    // Aimed THROUGH the crown, not merely upward. From a seat at (0.9, -0.6)
+    // the toono centre at (0, 2.264, 0) sits on bearing 236 and 53 degrees up;
+    // at 1.8 m away the 0.7 m ring subtends about 43 degrees, so it frames the
+    // sky inside a 60 degree lens with room to spare. Aim anywhere else and you
+    // are looking at the underside of a roof.
+    x: 0.9,
+    z: -0.6,
     eye: 0.85,
-    bearing: 340,
-    pitch: 62,
-    yawRange: 90,
-    pitchRange: 45,
+    bearing: 236,
+    pitch: 53,
+    yawRange: 70,
+    // Kept under (90 - pitch) so free look can never tip past vertical and roll
+    // the horizon over.
+    pitchRange: 30,
   },
 ]
 
