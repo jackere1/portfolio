@@ -296,8 +296,20 @@ bark, a milk pail), muted until the entry gesture.
 scroll. The camera moving one-to-one with the gesture is the anti-nausea contract, and a
 scrollbar that stops responding reads as a bug rather than as etiquette.
 
-**Still missing:** the зэл (the foal tether line that says late summer) and the horses; and the
-frame budget above.
+**The зэл** (`Zel` in `components/world/animals.tsx`) is the foal tether line in front of the
+ger to the south-west, with the mares standing loose nearby. Foals are tethered from the tiger
+day of summer precisely so the mares stay close enough to milk, and airag is only possible from
+July into late September — a summer camp in August without one has had its season removed. The
+horses are placed where a host at the door can see them, which is the point of putting them
+there.
+
+**The herd comes home along the ground it uses, not through the front yard.** The flock returns
+via a waypoint north of the camp. A straight interpolation from pasture to corral walked all
+120 animals through the middle of the camp and past the camera.
+
+**Still missing:** nothing on the audit's MUST FIX list. What remains is polish and the
+accumulated tuning constants — the terrain map, the grass placement and the ger generator all
+carry numbers nobody has revisited since the arc changed underneath them.
 
 The full plan, including the v1 cut list and the phase order, is at
 `~/.claude/plans/lets-build-everything-from-golden-tide.md`.

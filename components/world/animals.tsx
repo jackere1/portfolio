@@ -20,6 +20,9 @@ import { CORRAL } from "@/lib/world"
 
 const FLOCK = 120
 
+/** The way home: north of the camp, never through it. */
+const RETURN_WAY = { x: -2, z: -46 }
+
 /** Where the herd is at a given progress: far out grazing, then home. */
 function flockBlend(t: number): number {
   // Out on the pasture through the afternoon; brought in across the golden
@@ -65,11 +68,26 @@ export function Flock() {
 
     for (let i = 0; i < layout.length; i++) {
       const a = layout[i]
-      const x = a.gx + (a.bx - a.gx) * b
-      const z = a.gz + (a.bz - a.gz) * b
-      // Standing while grazing, settled down once they are in.
-      const lie = b * 0.35
-      dummy.position.set(x, heightAt(x, z) + (0.3 - lie) * a.scale, z)
+      // TWO segments, via a waypoint north of the camp. A straight lerp from
+      // the pasture to the corral walks the entire flock through the middle of
+      // the camp and past the camera, which is both wrong and absurd — a herd
+      // comes home along the ground it always uses, not through the front yard.
+      let x: number
+      let z: number
+      if (b < 0.55) {
+        const k = b / 0.55
+        x = a.gx + (RETURN_WAY.x - a.gx) * k
+        z = a.gz + (RETURN_WAY.z - a.gz) * k
+      } else {
+        const k = (b - 0.55) / 0.45
+        x = RETURN_WAY.x + (a.bx - RETURN_WAY.x) * k
+        z = RETURN_WAY.z + (a.bz - RETURN_WAY.z) * k
+      }
+      // Standing while grazing, settled down once they are in. The body's
+      // centre must sit a HALF-HEIGHT above the ground — placing it at ground
+      // level buries half the animal and leaves a field of pale domes.
+      const lie = b * 0.12
+      dummy.position.set(x, heightAt(x, z) + (0.26 - lie) * a.scale, z)
       dummy.rotation.set(0, a.rot, 0)
       dummy.scale.setScalar(a.scale * (a.goat ? 0.92 : 1))
       dummy.updateMatrix()
@@ -159,6 +177,162 @@ export function Bankhar() {
           </mesh>
         ))}
       </group>
+    </group>
+  )
+}
+
+// --- the зэл ----------------------------------------------------------------
+//
+// A pegged line with the foals tied along it, and the mares standing loose
+// nearby. This is the single clearest thing that says LATE SUMMER at a camp:
+// foals are tethered from the tiger day of summer precisely so the mares stay
+// close enough to be milked, and airag is only possible from July into late
+// September. A summer camp in August with no зэл and no khokhuur is a camp with
+// its season removed.
+//
+// It sits in front of the ger, to the south-west, where a host standing at the
+// door can see the horses — which is the whole point of putting them there.
+
+const ZEL_FROM = { x: -9.5, z: 7.0 }
+const ZEL_TO = { x: -1.5, z: 10.2 }
+const FOALS = 5
+const MARES = 3
+
+/** A horse, standing. Never walking — the same rule as the flock, for the same
+ *  reason: shape survives scrutiny at this distance, motion does not. */
+function Horse({
+  x,
+  z,
+  yaw,
+  scale = 1,
+  coat = "#5a4432",
+}: {
+  x: number
+  z: number
+  yaw: number
+  scale?: number
+  coat?: string
+}) {
+  const y = heightAt(x, z)
+  return (
+    <group position={[x, y, z]} rotation={[0, yaw, 0]} scale={scale}>
+      {/* barrel */}
+      <mesh position={[0, 1.02, 0]} castShadow>
+        <sphereGeometry args={[0.42, 10, 8]} />
+        <meshStandardMaterial color={coat} roughness={0.9} />
+      </mesh>
+      {/* neck and head, carried low the way a grazing horse holds them */}
+      <mesh position={[0, 1.16, 0.5]} rotation={[0.75, 0, 0]} castShadow>
+        <cylinderGeometry args={[0.11, 0.16, 0.6, 8]} />
+        <meshStandardMaterial color={coat} roughness={0.9} />
+      </mesh>
+      <mesh position={[0, 0.94, 0.82]} rotation={[1.15, 0, 0]} castShadow>
+        <capsuleGeometry args={[0.09, 0.26, 4, 8]} />
+        <meshStandardMaterial color={coat} roughness={0.9} />
+      </mesh>
+      {[
+        [-0.2, 0.28],
+        [0.2, 0.28],
+        [-0.2, -0.28],
+        [0.2, -0.28],
+      ].map(([lx, lz], i) => (
+        <mesh key={i} position={[lx, 0.5, lz]} castShadow>
+          <cylinderGeometry args={[0.055, 0.045, 1.0, 6]} />
+          <meshStandardMaterial color={coat} roughness={0.92} />
+        </mesh>
+      ))}
+      {/* tail */}
+      <mesh position={[0, 1.02, -0.44]} rotation={[-0.35, 0, 0]} castShadow>
+        <cylinderGeometry args={[0.06, 0.02, 0.62, 6]} />
+        <meshStandardMaterial color="#2e2620" roughness={0.95} />
+      </mesh>
+    </group>
+  )
+}
+
+export function Zel() {
+  const rng = useMemo(() => makeRng("zel"), [])
+
+  const line = useMemo(() => {
+    const dx = ZEL_TO.x - ZEL_FROM.x
+    const dz = ZEL_TO.z - ZEL_FROM.z
+    const len = Math.hypot(dx, dz)
+    const mid = {
+      x: (ZEL_FROM.x + ZEL_TO.x) / 2,
+      z: (ZEL_FROM.z + ZEL_TO.z) / 2,
+    }
+    return { len, yaw: Math.atan2(dx, dz), mid }
+  }, [])
+
+  const foals = useMemo(
+    () =>
+      Array.from({ length: FOALS }, (_, i) => {
+        const k = (i + 0.5) / FOALS
+        // Alternating sides of the rope, as they actually stand.
+        const side = i % 2 === 0 ? 1 : -1
+        const x =
+          ZEL_FROM.x + (ZEL_TO.x - ZEL_FROM.x) * k + side * 0.55 + seededDrift(rng, 0.18)
+        const z =
+          ZEL_FROM.z + (ZEL_TO.z - ZEL_FROM.z) * k + side * 0.25 + seededDrift(rng, 0.18)
+        return {
+          x,
+          z,
+          yaw: line.yaw + (side > 0 ? 1.5 : -1.5) + seededDrift(rng, 0.35),
+          scale: seededRange(rng, 0.62, 0.74),
+          coat: ["#6b5340", "#4a3a2c", "#7a6248"][i % 3],
+        }
+      }),
+    [rng, line.yaw]
+  )
+
+  const mares = useMemo(
+    () =>
+      Array.from({ length: MARES }, () => {
+        const a = seededRange(rng, -0.9, 0.9)
+        const r = seededRange(rng, 5.5, 11)
+        return {
+          x: line.mid.x + Math.sin(a + line.yaw) * r,
+          z: line.mid.z + Math.cos(a + line.yaw) * r * 0.7,
+          yaw: seededRange(rng, 0, Math.PI * 2),
+          scale: seededRange(rng, 0.98, 1.1),
+          coat: ["#4f3d2e", "#63503c", "#3b3128"][Math.floor(rng() * 3)],
+        }
+      }),
+    [rng, line.mid.x, line.mid.z, line.yaw]
+  )
+
+  return (
+    <group>
+      {/* The two pegs and the rope between them, low and taut. */}
+      {[ZEL_FROM, ZEL_TO].map((p, i) => (
+        <mesh
+          key={i}
+          position={[p.x, heightAt(p.x, p.z) + 0.16, p.z]}
+          castShadow
+        >
+          <cylinderGeometry args={[0.045, 0.055, 0.34, 6]} />
+          <meshStandardMaterial color="#4f4234" roughness={0.94} />
+        </mesh>
+      ))}
+      <mesh
+        position={[
+          line.mid.x,
+          heightAt(line.mid.x, line.mid.z) + 0.24,
+          line.mid.z,
+        ]}
+        rotation={[Math.PI / 2, 0, -line.yaw]}
+        castShadow
+      >
+        <cylinderGeometry args={[0.016, 0.016, line.len, 5]} />
+        <meshStandardMaterial color="#6d6152" roughness={0.95} />
+      </mesh>
+
+      {foals.map((f, i) => (
+        <Horse key={`f${i}`} {...f} />
+      ))}
+      {mares.map((m, i) => (
+        <Horse key={`m${i}`} {...m} />
+      ))}
     </group>
   )
 }
