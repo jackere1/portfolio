@@ -230,12 +230,26 @@ t = 0.04 (the backlit grass), 0.31 (the Belt of Venus, looking anti-solar), 0.62
 hour) and 0.95 (the Milky Way). Confirm: the grass burns gold rather than white; the far
 land has no seam; the sky never bands; 390px width gets the flat tier; zero console errors.
 
-**Measured on the PRODUCTION build**, 2026-08-03, Intel Meteor Lake integrated graphics,
-1440x900 at DPR 1.5: 20.6–22.0 ms median across all nine stops (p95 22.8–24.6). That is about
-46 fps and it is BELOW vsync — a real regression from the 16.7 ms the empty world held, and it
-is close to uniform across every stop, which points at the vegetation (383k blades, three draw
-calls, and a vertex shader doing a four-tap bilinear terrain sample per blade) rather than at
-any one object. **Not yet investigated.** Do not quote 60 fps for this scene.
+### Frame budget, and how to measure it without fooling yourself
+
+Measured on the PRODUCTION build, 2026-08-03, Intel Meteor Lake integrated graphics, 1440x900
+at DPR 1, headless Chromium.
+
+**The scene's own render costs about 1.0 ms per frame** — `gl.render(scene, camera)` in a tight
+loop followed by `gl.finish()`, so GPU completion is included. (That path bypasses the
+postprocessing composer, which R3F drives itself, so the composer's bloom/AgX/grain passes are
+on top of that and are not yet separately measured.)
+
+**Do not trust rAF interval in this environment.** It sits at ~20 ms and it is insensitive to
+everything: cutting resolution eightfold (DPR 1 → 0.35) moves it 8%, and hiding all 383,000
+vegetation instances moves it not at all. A number that does not respond to an eightfold change
+in pixels or to the removal of the heaviest geometry in the scene is not measuring the scene —
+it is measuring the headless browser's presentation cadence.
+
+An earlier version of this file claimed "20.6–22.0 ms, about 46 fps, a real regression, points
+at the vegetation." **All three of those claims were wrong**, and they were wrong because a
+frame-interval number was quoted without checking whether it responded to anything. If you
+quote a frame time here, first prove it moves when you change something.
 
 ---
 

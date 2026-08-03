@@ -1,7 +1,7 @@
 "use client"
 
 import { Suspense, useEffect } from "react"
-import { Canvas } from "@react-three/fiber"
+import { Canvas, useThree } from "@react-three/fiber"
 import { Preload } from "@react-three/drei"
 import Lenis from "lenis"
 import * as THREE from "three"
@@ -23,9 +23,29 @@ import { Ovoo } from "@/components/world/ovoo"
 import { HOST_GER } from "@/lib/ger"
 import { Chrome } from "@/components/ui/chrome"
 
+/** Exposes the renderer and scene on window.__ailchin for measurement. This is
+ *  a runtime branch behind a flag, not a static one, so it is NOT tree-shaken —
+ *  it ships. That is a deliberate trade: being able to profile the real build
+ *  is worth a few bytes, and claiming otherwise would be untrue. */
+function Probe() {
+  const { gl, scene, camera } = useThree()
+  useEffect(() => {
+    const w = window as unknown as { __ailchin?: Record<string, unknown> }
+    // MUTATE, never replace. Two effects write to this object from two
+    // different React roots (the page and the R3F canvas) and their order is
+    // not guaranteed, so whichever assigned second used to erase the first.
+    w.__ailchin = w.__ailchin ?? {}
+    w.__ailchin.gl = gl
+    w.__ailchin.scene = scene
+    w.__ailchin.camera = camera
+  }, [gl, scene, camera])
+  return null
+}
+
 function Scene({ quality }: { quality: ReturnType<typeof useGpuTier>["quality"] }) {
   return (
     <>
+      <Probe />
       <CameraRig />
       <Environment quality={quality} />
       <Sky />
@@ -70,13 +90,15 @@ export function Experience() {
     raf = requestAnimationFrame(loop)
 
     lenis.on("scroll", (e: { progress: number }) => setProgress(e.progress))
-    ;(window as unknown as { __ailchin?: unknown }).__ailchin = {
-      lenis,
-      seek: (t: number) =>
-        lenis.scrollTo(t * (document.body.scrollHeight - window.innerHeight), {
-          immediate: true,
-        }),
-    }
+    // MERGE, never assign: the in-canvas probe writes gl/scene/camera onto the
+    // same object and whichever effect ran second used to erase the other.
+    const w = window as unknown as { __ailchin?: Record<string, unknown> }
+    w.__ailchin = w.__ailchin ?? {}
+    w.__ailchin.lenis = lenis
+    w.__ailchin.seek = (t: number) =>
+      lenis.scrollTo(t * (document.body.scrollHeight - window.innerHeight), {
+        immediate: true,
+      })
 
     setReady(true)
     return () => {
