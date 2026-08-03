@@ -183,15 +183,18 @@ at stop 01 with 330k blades — vsync-locked, with headroom.
 
 ## Where it is now
 
-**P0 is done: the world exists and the whole light arc works.** Terrain, grass, sky, camera,
-render pipeline, chrome and the flat tier are in. **Nothing man-made has been built yet** —
-no ger, no corral, no props, no animals, no interior, no audio. Stops 04–07 currently look
-at empty ground where the camp will stand.
+**The world exists, the light arc works, and the ger stands.** Terrain, grass, sky, camera,
+render pipeline, chrome, the flat tier and the host ger with its hearth are in.
 
-Next is the ger, from **one parameterised generator** that yields every ger in the world:
-instanced khana lattice, ~80 straight uni poles at 20°, a lathe-swept toono with crossed
-spokes, canvas with a dust-stain gradient rising from the ground line, tension bands,
-stone-weighted ropes, and the south-facing orange ulzii door.
+The ger comes from `lib/ger.ts` — one parameterised generator producing the khana lattice,
+80 straight uni poles, the toono and its blue-painted spokes, the cover with its dust-stain
+gradient, tension bands, stone-weighted ropes and the south-facing painted door. The hearth
+(`components/world/hearth.tsx`) is what makes stops 04–07 legible: one warm point light,
+emissive-above-1 door seams and crown, all riding a single clamped seeded flicker so the
+fire and everything it touches inhale together. Chimney smoke reads from stop 01.
+
+**Still missing:** the corral and flock, the bankhar, every prop on the east wall (jerrycans,
+milk cans, argal stack, solar panel, aaruul tray), the interior set, and all audio.
 
 The full plan, including the v1 cut list and the phase order, is at
 `~/.claude/plans/lets-build-everything-from-golden-tide.md`.

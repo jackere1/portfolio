@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef } from "react"
+import { useMemo } from "react"
 import { useFrame, useThree } from "@react-three/fiber"
 import * as THREE from "three"
 import { makeRng } from "@/lib/prng"
@@ -17,17 +17,21 @@ import {
 
 // The field.
 //
-// Blades live on a fixed local patch that rides a SNAPPED copy of the camera's
-// position, so the world never swims underfoot, and they ground themselves
-// against the same baked height map the terrain mesh is built from.
+// Blades are placed once in a square tile and then WRAPPED toroidally around
+// the camera in the vertex shader: a blade's world position is its offset plus
+// whole multiples of the tile. As the camera travels, a blade jumps by exactly
+// one tile — and it can only do that at the tile boundary, which is past the
+// fade, where it is already invisible.
+//
+// The earlier version snapped the whole field to a 2 m grid instead. That
+// teleported every blade at once every two metres of travel, re-sampling the
+// density mask underneath them, so blades visibly popped in and out while you
+// scrolled.
 //
 // The term that matters is the backlight translucency in the fragment shader:
 // at dusk, grass is not a diffuse surface, it is a screen. Light comes THROUGH
 // it. Take that term out and stop 01 is a field of grey sticks.
 
-const FIELD_RADIUS = 58
-/** Camera position is snapped to this grid so blades never crawl. */
-const SNAP = 2.0
 const BLADE_SEGMENTS = 4
 
 function buildBladeGeometry(): THREE.BufferGeometry {
@@ -55,10 +59,7 @@ function buildBladeGeometry(): THREE.BufferGeometry {
   indices.push(last, last + 1, BLADE_SEGMENTS * 2)
 
   const geo = new THREE.BufferGeometry()
-  geo.setAttribute(
-    "position",
-    new THREE.Float32BufferAttribute(positions, 3)
-  )
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3))
   geo.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2))
   geo.setIndex(indices)
   return geo
@@ -75,30 +76,39 @@ const VERT = /* glsl */ `
   attribute float iPhase;
   attribute float iTint;
 
-  uniform vec2  uFieldOrigin;
+  uniform float uTileSize;
+  uniform vec4  uFade;      // (in0, in1, out0, out1) in metres
   uniform float uTime;
   uniform float uWind;
   uniform vec3  uCamPos;
-  uniform float uFieldRadius;
   uniform vec2  uWindDir;
 
   varying vec3  vWorld;
   varying vec3  vNormal;
   varying float vUp;        // 0 at the root, 1 at the tip
   varying float vTint;
-  varying float vGround;    // terrain-up, for the hemisphere term
 
   void main() {
-    vec2 worldXZ = uFieldOrigin + iOffset;
+    // Toroidal wrap: keep every blade within half a tile of the camera on each
+    // axis, at a world position that is always the same offset within the same
+    // repeating lattice. A blade only relocates when it crosses the boundary,
+    // and the boundary is beyond the fade.
+    vec2 tile = vec2(uTileSize);
+    vec2 worldXZ = iOffset + floor((uCamPos.xz - iOffset) / tile + 0.5) * tile;
+
     vec4 terrain = sampleTerrain(worldXZ);
     float ground  = terrain.r;
     float density = terrain.g;
 
-    // Dithered radial falloff: instead of a hard edge, blades drop out
-    // individually as they get far, which reads as thinning rather than a wall.
+    // A window rather than a single falloff, so several tiles can be layered:
+    // a dense one underfoot and a sparse one reaching out to the fog.
     float dist = length(worldXZ - uCamPos.xz);
-    float radial = 1.0 - smoothstep(uFieldRadius * 0.74, uFieldRadius, dist);
-    float keep = step(1.0 - density * radial, fract(iPhase * 91.7));
+    float window = smoothstep(uFade.x, uFade.y, dist) *
+                   (1.0 - smoothstep(uFade.z, uFade.w, dist));
+
+    // Dithered: blades drop out individually rather than along an edge, which
+    // reads as thinning instead of a wall.
+    float keep = step(1.0 - density * window, fract(iPhase * 91.7));
 
     float height = iScale.x * keep;
     float width  = iScale.y;
@@ -115,14 +125,12 @@ const VERT = /* glsl */ `
     // every blade in the same phase, and the whole steppe breathes as one lung.
     //
     // And every blade gets its own phase offset in EVERY term, not just the
-    // flutter, so the field is never synchronised — least of all at t = 0,
-    // where a shared starting phase is most obvious.
+    // flutter, so the field is never synchronised.
     float along  = dot(worldXZ, uWindDir);
     float jitter = iPhase * 6.2831;
 
     float gust  = sin(along * 0.45 - uTime * 1.65 + jitter * 0.35);
     float swell = sin(along * 0.165 - uTime * 0.60 + jitter * 0.16 + 2.1);
-    // Per-blade flutter, at a per-blade RATE as well as a per-blade phase.
     float micro = sin(uTime * (2.1 + fract(iPhase * 7.3) * 1.9) + jitter);
 
     // Grass is pushed and springs back; it does not oscillate symmetrically
@@ -155,7 +163,6 @@ const VERT = /* glsl */ `
 
     vec3 world = vec3(worldXZ.x, ground, worldXZ.y) + rotated;
     vWorld = world;
-    vGround = 1.0;
 
     // Face normal: the blade's own facing, tilted by how far it has been bent.
     vec3 n = normalize(vec3(s, 0.0, c) + vec3(uWindDir.x, 0.0, uWindDir.y) * bend * 0.45);
@@ -207,8 +214,7 @@ const FRAG = /* glsl */ `
 
     // --- THE TERM ---------------------------------------------------------
     // Light coming through the blade from behind. Masked to the upper blade,
-    // because the base is buried in the sward and transmits nothing. This is
-    // what makes the field burn gold when you look into the low sun.
+    // because the base is buried in the sward and transmits nothing.
     //
     // It must stay GOLD. Pushed too hard it goes white, and white backlit
     // grass is wheat — the wrong crop, the wrong country, and the exact kitsch
@@ -238,17 +244,20 @@ const FRAG = /* glsl */ `
   }
 `
 
-export function Grass() {
-  const { quality } = useGpuTier()
-  const reduced = useReducedMotion()
-  const camera = useThree((s) => s.camera)
-  const matRef = useRef<THREE.ShaderMaterial>(null)
-  const sun = useMemo(() => createSunState(), [])
+interface TileProps {
+  seed: string
+  count: number
+  /** Half-extent of the wrapping tile, in metres. */
+  tileHalf: number
+  /** (in0, in1, out0, out1) — the distance window this tile is visible over. */
+  fade: [number, number, number, number]
+  perTuft: number
+}
 
-  const count = useMemo(() => {
-    if (quality.textureMaps.length === 0) return 40_000
-    return quality.textureSize >= 1024 ? 330_000 : 150_000
-  }, [quality])
+function GrassTile({ seed, count, tileHalf, fade, perTuft }: TileProps) {
+  const camera = useThree((s) => s.camera)
+  const reduced = useReducedMotion()
+  const sun = useMemo(() => createSunState(), [])
 
   const geometry = useMemo(() => {
     const blade = buildBladeGeometry()
@@ -259,7 +268,7 @@ export function Grass() {
     geo.instanceCount = count
 
     // Seeded and clamped, as everything here is. Same field, every load.
-    const rng = makeRng("ailchin-grass")
+    const rng = makeRng(seed)
     const offset = new Float32Array(count * 2)
     const rot = new Float32Array(count)
     const scale = new Float32Array(count * 2)
@@ -267,20 +276,16 @@ export function Grass() {
     const tint = new Float32Array(count)
 
     // Bunch grass grows in TUFTS with bare soil between them — it is not a
-    // lawn, and scattering blades uniformly is the single fastest way to make
-    // a steppe read as a golf course. Blades are placed in clumps that share a
-    // centre, a height class and a lean.
-    const PER_TUFT = 7
-    const tufts = Math.ceil(count / PER_TUFT)
+    // lawn, and scattering blades uniformly is the fastest way to make a
+    // steppe read as a golf course.
+    const tufts = Math.ceil(count / perTuft)
     let i = 0
 
-    for (let c = 0; c < tufts && i < count; c++) {
-      // Concentrated toward the camera: the exponent buys close-range density
-      // without paying for blades the fog would have eaten anyway.
-      const r = Math.pow(rng(), 0.6) * FIELD_RADIUS
-      const a = rng() * Math.PI * 2
-      const cx = Math.cos(a) * r
-      const cz = Math.sin(a) * r
+    for (let t = 0; t < tufts && i < count; t++) {
+      // Uniform across the tile: the wrap needs an even lattice, and density
+      // is set by the tile's size rather than by clustering toward the middle.
+      const cx = (rng() * 2 - 1) * tileHalf
+      const cz = (rng() * 2 - 1) * tileHalf
 
       // Height classes, so the field has a silhouette instead of a plateau.
       const tall = rng()
@@ -289,7 +294,7 @@ export function Grass() {
       const tuftTint = rng()
       const spread = 0.055 + rng() * 0.075
 
-      for (let b = 0; b < PER_TUFT && i < count; b++, i++) {
+      for (let b = 0; b < perTuft && i < count; b++, i++) {
         // Blades splay out of a shared root, denser at the middle.
         const br = Math.pow(rng(), 0.6) * spread
         const ba = rng() * Math.PI * 2
@@ -297,11 +302,8 @@ export function Grass() {
         offset[i * 2 + 1] = cz + Math.sin(ba) * br
 
         rot[i] = rng() * Math.PI * 2
-
-        // Far blades are widened slightly so they never alias down to nothing.
-        const far = r / FIELD_RADIUS
         scale[i * 2] = tuftHeight * (0.62 + rng() * 0.55)
-        scale[i * 2 + 1] = 0.009 + rng() * 0.008 + far * 0.014
+        scale[i * 2 + 1] = 0.009 + rng() * 0.008
 
         // Sharing the tuft's phase keeps a clump moving as one thing in wind.
         phase[i] = (tuftLean + rng() * 0.22) % 1
@@ -315,36 +317,35 @@ export function Grass() {
     geo.setAttribute("iPhase", new THREE.InstancedBufferAttribute(phase, 1))
     geo.setAttribute("iTint", new THREE.InstancedBufferAttribute(tint, 1))
 
-    geo.boundingSphere = new THREE.Sphere(
-      new THREE.Vector3(0, 0, 0),
-      FIELD_RADIUS * 3
-    )
+    // The mesh is wrapped around the camera every frame, so it is never off
+    // screen and must never be culled against a stale bound.
+    geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e6)
     return geo
-  }, [count])
+  }, [seed, count, tileHalf, perTuft])
 
   const uniforms = useMemo(
     () => ({
       uTerrainMap: { value: getTerrainMap() },
       uMapExtent: { value: MAP_EXTENT },
       uMapRes: { value: MAP_RES },
-      uFieldOrigin: { value: new THREE.Vector2() },
-      uFieldRadius: { value: FIELD_RADIUS },
+      uTileSize: { value: tileHalf * 2 },
+      uFade: { value: new THREE.Vector4(...fade) },
       uTime: { value: 0 },
       uWind: { value: 1 },
+      uCamPos: { value: new THREE.Vector3() },
       // The evening breeze, WNW-ish and constant. One direction for the whole
       // field: wind is weather, not a per-blade opinion.
       uWindDir: { value: new THREE.Vector2(0.87, 0.49).normalize() },
-      uCamPos: { value: new THREE.Vector3() },
       uSunDir: { value: new THREE.Vector3(0, 0.05, -1) },
       uSunColor: { value: new THREE.Color(1, 0.7, 0.35) },
       uSunIntensity: { value: 3 },
       uSkyColor: { value: new THREE.Color(0.4, 0.5, 0.7) },
       uGroundColor: { value: new THREE.Color(0.3, 0.25, 0.15) },
-      uAmbient: { value: 0.5 },
-      uFogColor: { value: new THREE.Color(0.5, 0.44, 0.4) },
+      uAmbient: { value: 0.3 },
+      uFogColor: { value: new THREE.Color(0.3, 0.25, 0.21) },
       uFogDensity: { value: 0.0022 },
     }),
-    []
+    [tileHalf, fade]
   )
 
   useFrame((_, delta) => {
@@ -357,11 +358,6 @@ export function Grass() {
     u.uWind.value = reduced ? 0 : 1
 
     u.uCamPos.value.copy(camera.position)
-    u.uFieldOrigin.value.set(
-      Math.round(camera.position.x / SNAP) * SNAP,
-      Math.round(camera.position.z / SNAP) * SNAP
-    )
-
     u.uSunDir.value.set(sun.dirX, sun.dirY, sun.dirZ)
     u.uSunColor.value.setRGB(sun.sunColor.r, sun.sunColor.g, sun.sunColor.b)
     u.uSunIntensity.value = sun.sunIntensity
@@ -379,7 +375,6 @@ export function Grass() {
   return (
     <mesh geometry={geometry} frustumCulled={false} renderOrder={1}>
       <shaderMaterial
-        ref={matRef}
         vertexShader={VERT}
         fragmentShader={FRAG}
         uniforms={uniforms}
@@ -388,5 +383,37 @@ export function Grass() {
         toneMapped={false}
       />
     </mesh>
+  )
+}
+
+/** Two layers: a dense one underfoot and a sparse one reaching out to the fog.
+ *  Both wrap independently, so neither ever shows a boundary. */
+export function Grass() {
+  const { quality } = useGpuTier()
+
+  const [near, far] = useMemo(() => {
+    if (quality.textureMaps.length === 0) return [40_000, 40_000]
+    return quality.textureSize >= 1024
+      ? [190_000, 180_000]
+      : [90_000, 80_000]
+  }, [quality])
+
+  return (
+    <>
+      <GrassTile
+        seed="ailchin-grass-near"
+        count={near}
+        tileHalf={20}
+        fade={[-1, 0, 15, 20]}
+        perTuft={7}
+      />
+      <GrassTile
+        seed="ailchin-grass-far"
+        count={far}
+        tileHalf={58}
+        fade={[12, 19, 44, 58]}
+        perTuft={5}
+      />
+    </>
   )
 }
