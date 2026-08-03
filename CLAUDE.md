@@ -88,10 +88,13 @@ expected to print **zero** errors — not "fewer". If it prints any, you added t
   textures are only linearly filterable behind an extension, and a silent fallback to point
   sampling steps the grass base height by a third of a metre.
 - `components/world/sky.tsx` — the authored twilight dome (see below).
-- `components/world/terrain.tsx` — ground plus a coarse skirt that shares the hero patch's
-  exact height function and vertex colouring, offset in **depth** not in Y.
-- `components/world/grass.tsx` — ~330k instanced blades on a patch riding a snapped copy of
-  the camera position.
+- `components/world/terrain.tsx` — the hero patch plus a square ANNULUS skirt that begins
+  exactly where it ends. They share a height function, a colouring rule and world-space UVs,
+  and they do not overlap at all — see note 11 below for why that matters.
+- `components/world/grass.tsx` — ~370k instanced blades in two toroidally-wrapped tiles, a
+  dense one underfoot and a sparse one reaching out to the fog.
+- `lib/ger.ts` + `components/world/ger.tsx` — the one ger generator and its renderer.
+- `components/world/hearth.tsx` — the fire, the door seams, the crown glow and the smoke.
 
 ### Chrome
 - `components/ui/toono-mark.tsx` — the mark and the dial, one geometry doing both jobs.
@@ -135,6 +138,15 @@ These each cost real time to find. They are not stylistic.
    and throws.
 10. **The Milky Way's structure must be smooth noise.** Hashing `floor(d * k)` directly
     quantises the sky into visible blocks a few degrees across.
+11. **The hero patch and the skirt must not overlap.** They were once stacked, both displaced
+    by the same height function and kept apart by `polygonOffset`. Polygon offset is
+    depth-slope dependent, and a 1.65 m eye sees nearly everything at a grazing angle, so the
+    skirt punched through in shifting patches that read as the ground texture randomly
+    changing while you scrolled.
+12. **Grass wraps toroidally; it does not snap.** Snapping the whole field to a grid teleports
+    every blade at once and re-samples the density mask under it, so blades pop in and out
+    mid-travel. Wrapping means a blade only relocates at the tile boundary, past the fade,
+    where it is already invisible.
 
 ---
 
