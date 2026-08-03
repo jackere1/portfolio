@@ -1,121 +1,104 @@
 "use client"
 
+import { Suspense, useEffect } from "react"
 import { Canvas } from "@react-three/fiber"
 import { Preload } from "@react-three/drei"
-import { Suspense, useEffect, useRef } from "react"
 import Lenis from "lenis"
+import * as THREE from "three"
+import { useGpuTier } from "@/hooks/use-gpu-tier"
+import { setProgress, useJourneyStore } from "@/hooks/use-journey"
+import { JOURNEY_VH } from "@/lib/stops"
 import { CameraRig } from "./camera-rig"
 import { Environment } from "./environment"
 import { PostProcessing } from "./post-processing"
-import { Shaft } from "../world/shaft"
-import { Seam } from "../world/seam"
-import { SkyDome } from "../world/sky-dome"
-import { Levels } from "../sections/levels"
-import { NavOverlay } from "../ui/nav-overlay"
-import { ScrollHint } from "../ui/scroll-hint"
-import { LoadingScreen } from "../ui/loading-screen"
-import { Capsule } from "../ui/capsule"
-import { Colophon } from "../ui/colophon"
-import { Cursor } from "../ui/cursor"
-import { useScrollStore } from "@/hooks/use-scroll-store"
-import { useGpuTier } from "@/hooks/use-gpu-tier"
+import { Sky } from "@/components/world/sky"
+import { Terrain } from "@/components/world/terrain"
+import { Grass } from "@/components/world/grass"
+import { Chrome } from "@/components/ui/chrome"
 
-function Scene() {
-  const { quality } = useGpuTier()
-
+function Scene({ quality }: { quality: ReturnType<typeof useGpuTier>["quality"] }) {
   return (
     <>
       <CameraRig />
-      <Environment />
-      <SkyDome />
-
-      {/* The shaft — a stack of distinct floor stages you descend through,
-          divided by storey slabs, with ground level at the boundary. */}
-      <Shaft />
-      <Seam />
-
-      {/* Post-processing effects */}
+      <Environment quality={quality} />
+      <Sky />
+      <Suspense fallback={null}>
+        <Terrain />
+      </Suspense>
+      <Grass />
       <PostProcessing quality={quality} />
-
       <Preload all />
     </>
   )
 }
 
 export function Experience() {
-  const lenisRef = useRef<Lenis | null>(null)
-  const loaded = useScrollStore((s) => s.loaded)
-  const setProgress = useScrollStore((s) => s.setProgress)
+  const { quality } = useGpuTier()
+  const setReady = useJourneyStore((s) => s.setReady)
 
   useEffect(() => {
     const lenis = new Lenis({
       duration: 1.2,
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
-      touchMultiplier: 1.5,
-    })
-    lenisRef.current = lenis
-
-    // Expose lenis on window so nav can call scrollTo
-    ;(window as Window & { __lenis?: Lenis }).__lenis = lenis
-
-    lenis.on("scroll", (e: Lenis) => {
-      setProgress(e.progress)
+      // Native touch scroll runs off the rAF thread and desyncs the canvas.
+      syncTouch: true,
+      touchMultiplier: 1.4,
     })
 
-    function raf(time: number) {
+    // The camera moves ONLY while the user scrolls — one to one with the
+    // gesture. This is the whole anti-nausea contract, and it lives here.
+    let raf = 0
+    const loop = (time: number) => {
       lenis.raf(time)
-      requestAnimationFrame(raf)
+      raf = requestAnimationFrame(loop)
     }
-    requestAnimationFrame(raf)
+    raf = requestAnimationFrame(loop)
 
-    return () => {
-      lenis.destroy()
-      delete (window as Window & { __lenis?: Lenis }).__lenis
+    lenis.on("scroll", (e: { progress: number }) => setProgress(e.progress))
+    ;(window as unknown as { __ailchin?: unknown }).__ailchin = {
+      lenis,
+      seek: (t: number) =>
+        lenis.scrollTo(t * (document.body.scrollHeight - window.innerHeight), {
+          immediate: true,
+        }),
     }
-  }, [setProgress])
+
+    setReady(true)
+    return () => {
+      cancelAnimationFrame(raf)
+      lenis.destroy()
+    }
+  }, [setReady])
 
   return (
     <>
-      {!loaded && <LoadingScreen />}
-
-      {/* Scrollable spacer — Lenis scrolls this, we read progress */}
-      <div style={{ height: "600vh" }} aria-hidden />
-
-      {/* Fixed canvas overlay — touch-action allows mobile scroll pass-through */}
-      <div
-        className="fixed inset-0"
-        style={{ touchAction: "pan-y", pointerEvents: "none" }}
-      >
+      <div className="stage">
         <Canvas
+          dpr={[1, quality.dpr]}
           gl={{
-            antialias: true,
+            antialias: false,
             alpha: false,
             powerPreference: "high-performance",
-            stencil: false,
-            depth: true,
+            // The composer applies AgX itself; leave the renderer out of it or
+            // the image is tone mapped twice.
+            toneMapping: THREE.NoToneMapping,
           }}
-          dpr={[1, 1.5]}
-          camera={{ position: [0, 12, 8], fov: 60, near: 0.1, far: 200 }}
-          style={{
-            background: "#9bb0cf",
-            pointerEvents: "auto",
-            touchAction: "pan-y",
+          camera={{ fov: 60, near: 0.1, far: 6000, position: [18, 2, -104] }}
+          shadows={quality.shadows}
+          onCreated={({ gl }) => {
+            gl.outputColorSpace = THREE.SRGBColorSpace
+            gl.setClearColor(0x05070f, 1)
           }}
         >
-          <Suspense fallback={null}>
-            <Scene />
-          </Suspense>
+          <Scene quality={quality} />
         </Canvas>
       </div>
 
-      {/* 2D overlays on top of the canvas (DOM siblings — the camera can't touch them) */}
-      <Capsule />
-      <Levels />
-      <NavOverlay />
-      <ScrollHint />
-      <Cursor />
-      <Colophon />
+      {/* The scroll the journey rides on. Nothing is drawn here. */}
+      <div className="scroll-track" style={{ height: `${JOURNEY_VH}vh` }} />
+
+      <Chrome />
     </>
   )
 }

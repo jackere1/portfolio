@@ -3,113 +3,100 @@
 import { useMemo, useRef } from "react"
 import { useFrame, useThree } from "@react-three/fiber"
 import * as THREE from "three"
-import { useScrollStore } from "@/hooks/use-scroll-store"
+import { journey } from "@/hooks/use-journey"
+import { createSunState, writeSunState } from "@/lib/sun-arc"
+import type { QualityConfig } from "@/hooks/use-gpu-tier"
 
-/**
- * The light of the descent. Three keyframes driven by depth:
- *   surface — Mongolian steppe at dawn (bright, natural, warm-cool daylight)
- *   ground  — the threshold, where daylight gives way to the enclosed interior
- *   deep    — the foundation, dark concrete lit only by the cab lamp
- *
- * The dramatic daylight→enclosed shift lands at the ground crossing (p≈0.20,
- * where the seam sits). Everything is mutated per-frame via refs with no React
- * re-render and no allocation inside useFrame.
- */
+// The light director. Everything here is mutated through refs on the object
+// itself — no React state, no re-render, no allocation in the frame loop.
+//
+// There is only ever ONE shadow system alive. While the sun is up it casts,
+// with a tight frustum that follows the camera; the moment the sun dies the
+// caster is switched off AND its map disposed, because clearing castShadow
+// alone leaves the depth target allocated.
 
-// Progress at which the camera crosses ground level: (Y_SURFACE - SEAM_Y)/span.
-const GROUND_P = 0.2
+export function Environment({ quality }: { quality: QualityConfig }) {
+  const scene = useThree((s) => s.scene)
+  const camera = useThree((s) => s.camera)
 
-// Numeric stops: [surface, ground, deep].
-const FOG_NEAR = [14, 8, 4]
-const FOG_FAR = [120, 50, 16]
-const AMB_I = [0.55, 0.2, 0.07]
-const KEY_I = [0.9, 0.3, 0.12]
-const FILL_I = [0.1, 0.14, 0.14]
-const LAMP_I = [0.6, 2.4, 3.4]
-const KEY_POS: [number, number, number][] = [
-  [12, 6, 8],
-  [8, 14, 6],
-  [5, 20, 5],
-]
+  const sun = useMemo(() => createSunState(), [])
+  const sunRef = useRef<THREE.DirectionalLight>(null)
+  const hemiRef = useRef<THREE.HemisphereLight>(null)
+  const shadowLive = useRef(true)
 
-const col = (hex: string) => new THREE.Color(hex)
-const BG = ["#9bb0cf", "#2a2418", "#0a0a0c"].map(col)
-const FOG = ["#d8b48c", "#14100a", "#08080a"].map(col)
-const AMB = ["#e8d8c0", "#c8a050", "#c8a050"].map(col)
-const KEY = ["#ffd9a0", "#e8b040", "#e8b040"].map(col)
-const FILL = ["#9fb8d8", "#4060c0", "#4060c0"].map(col)
-
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t
-
-// Which two stops bracket p, and the blend within them.
-function segment(p: number): [number, number, number] {
-  if (p <= GROUND_P) return [0, 1, p / GROUND_P]
-  return [1, 2, (p - GROUND_P) / (1 - GROUND_P)]
-}
-
-export function Environment() {
-  const { scene, camera } = useThree()
-  const ambRef = useRef<THREE.AmbientLight>(null)
-  const keyRef = useRef<THREE.DirectionalLight>(null)
-  const fillRef = useRef<THREE.DirectionalLight>(null)
-  const lampRef = useRef<THREE.PointLight>(null)
-
-  // Persistent colors mutated each frame (the background reference is reused).
-  const bg = useMemo(() => new THREE.Color("#9bb0cf"), [])
+  const fog = useMemo(
+    () => new THREE.FogExp2(new THREE.Color(0.5, 0.44, 0.4).getHex(), 0.0022),
+    []
+  )
 
   useFrame(() => {
-    const p = useScrollStore.getState().progress
-    const [i0, i1, t] = segment(p)
+    writeSunState(sun, journey.t)
 
-    // Background — assign once, then mutate in place.
-    bg.lerpColors(BG[i0], BG[i1], t)
-    if (scene.background !== bg) scene.background = bg
+    // --- fog: pressure, and a free horizon LOD ----------------------------
+    if (scene.fog !== fog) scene.fog = fog
+    fog.color.setRGB(sun.fogColor.r, sun.fogColor.g, sun.fogColor.b)
+    fog.density = sun.fogDensity
+    scene.background = null
 
-    // Fog (mutate scene.fog created by the <fog> element below).
-    const fog = scene.fog as THREE.Fog | null
-    if (fog) {
-      fog.color.lerpColors(FOG[i0], FOG[i1], t)
-      fog.near = lerp(FOG_NEAR[i0], FOG_NEAR[i1], t)
-      fog.far = lerp(FOG_FAR[i0], FOG_FAR[i1], t)
-    }
-
-    if (ambRef.current) {
-      ambRef.current.intensity = lerp(AMB_I[i0], AMB_I[i1], t)
-      ambRef.current.color.lerpColors(AMB[i0], AMB[i1], t)
-    }
-    if (keyRef.current) {
-      keyRef.current.intensity = lerp(KEY_I[i0], KEY_I[i1], t)
-      keyRef.current.color.lerpColors(KEY[i0], KEY[i1], t)
-      keyRef.current.position.set(
-        lerp(KEY_POS[i0][0], KEY_POS[i1][0], t),
-        lerp(KEY_POS[i0][1], KEY_POS[i1][1], t),
-        lerp(KEY_POS[i0][2], KEY_POS[i1][2], t)
+    // --- the sun ----------------------------------------------------------
+    const dir = sunRef.current
+    if (dir) {
+      // Keep the light rigged to the camera so the shadow frustum stays tight
+      // around what is actually on screen.
+      dir.position.set(
+        camera.position.x + sun.dirX * 90,
+        camera.position.y + sun.dirY * 90,
+        camera.position.z + sun.dirZ * 90
       )
+      dir.target.position.copy(camera.position)
+      dir.target.updateMatrixWorld()
+      dir.intensity = sun.sunIntensity
+      dir.color.setRGB(sun.sunColor.r, sun.sunColor.g, sun.sunColor.b)
+
+      const wantShadow = quality.shadows && sun.sunIntensity > 0.02
+      if (wantShadow !== shadowLive.current) {
+        dir.castShadow = wantShadow
+        if (!wantShadow && dir.shadow.map) {
+          // castShadow = false does NOT free the depth target. Dispose it, or
+          // the "one shadow system at a time" budget is a fiction.
+          dir.shadow.map.dispose()
+          dir.shadow.map = null as unknown as THREE.WebGLRenderTarget
+        }
+        shadowLive.current = wantShadow
+      }
     }
-    if (fillRef.current) {
-      fillRef.current.intensity = lerp(FILL_I[i0], FILL_I[i1], t)
-      fillRef.current.color.lerpColors(FILL[i0], FILL[i1], t)
-    }
-    if (lampRef.current) {
-      lampRef.current.intensity = lerp(LAMP_I[i0], LAMP_I[i1], t)
-      lampRef.current.position.set(
-        camera.position.x,
-        camera.position.y - 1,
-        camera.position.z - 2
+
+    // --- hemisphere: the sky above, the bounced ground below --------------
+    const hemi = hemiRef.current
+    if (hemi) {
+      hemi.color.setRGB(sun.skyColor.r, sun.skyColor.g, sun.skyColor.b)
+      hemi.groundColor.setRGB(
+        sun.groundColor.r,
+        sun.groundColor.g,
+        sun.groundColor.b
       )
+      hemi.intensity = sun.ambientIntensity
     }
   })
 
   return (
     <>
-      <ambientLight ref={ambRef} intensity={0.55} color="#e8d8c0" />
-      <directionalLight ref={keyRef} position={[12, 6, 8]} intensity={0.9} color="#ffd9a0" />
-      <directionalLight ref={fillRef} position={[-5, -10, 5]} intensity={0.1} color="#9fb8d8" />
-
-      {/* The cab lamp — rides just ahead of the cab; the only light deep down. */}
-      <pointLight ref={lampRef} intensity={0.6} distance={16} decay={2} color="#e8a020" />
-
-      <fog attach="fog" args={["#d8b48c", 14, 120]} />
+      <hemisphereLight ref={hemiRef} intensity={0.5} />
+      <directionalLight
+        ref={sunRef}
+        intensity={3}
+        castShadow={quality.shadows}
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+        shadow-camera-near={1}
+        shadow-camera-far={220}
+        shadow-camera-left={-70}
+        shadow-camera-right={70}
+        shadow-camera-top={70}
+        shadow-camera-bottom={-70}
+        shadow-bias={-0.0006}
+        shadow-normalBias={0.06}
+      />
     </>
   )
 }

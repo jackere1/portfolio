@@ -1,0 +1,60 @@
+"use client"
+
+import { create } from "zustand"
+import { activeStop } from "@/lib/stops"
+
+/**
+ * The hot path. `journey.t` is written by Lenis every frame and read by every
+ * useFrame subscriber — it deliberately lives OUTSIDE React so that travelling
+ * causes zero re-renders. Nothing here allocates.
+ */
+export const journey = {
+  /** Progress, 0 at the track's end, 1 seated under the toono. */
+  t: 0,
+  /** Signed dt of t, for damping and for holding the camera still when idle. */
+  velocity: 0,
+  /** True once the visitor has clicked in and the AudioContext is unlocked. */
+  entered: false,
+}
+
+interface JourneyState {
+  /** Discrete, low-frequency state only — safe to re-render on. */
+  ready: boolean
+  entered: boolean
+  stopId: string
+  phase: "dusk" | "night"
+  setReady: (v: boolean) => void
+  enter: () => void
+  /** Called by the scroll driver; only pushes when a DISCRETE value changed. */
+  syncDiscrete: (stopId: string, phase: "dusk" | "night") => void
+}
+
+export const useJourneyStore = create<JourneyState>((set) => ({
+  ready: false,
+  entered: false,
+  stopId: "track",
+  phase: "dusk",
+  setReady: (v) => set({ ready: v }),
+  enter: () => {
+    journey.entered = true
+    set({ entered: true })
+  },
+  syncDiscrete: (stopId, phase) =>
+    set((s) =>
+      s.stopId === stopId && s.phase === phase ? s : { stopId, phase }
+    ),
+}))
+
+/**
+ * Write progress from the scroll driver. Updates the hot object every frame and
+ * the React store only when the active stop or the light phase actually flips.
+ */
+export function setProgress(t: number): void {
+  const clamped = t < 0 ? 0 : t > 1 ? 1 : t
+  journey.velocity = clamped - journey.t
+  journey.t = clamped
+
+  const stopId = activeStop(clamped).id
+  const phase: "dusk" | "night" = clamped >= 0.48 ? "night" : "dusk"
+  useJourneyStore.getState().syncDiscrete(stopId, phase)
+}

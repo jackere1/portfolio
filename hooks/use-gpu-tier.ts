@@ -2,163 +2,111 @@
 
 import { useState, useEffect } from "react"
 
-export type GpuTier = "ultra" | "high" | "medium" | "low" | "fallback"
+export type GpuTier = "high" | "medium" | "low" | "flat"
 
-/** PBR map kinds a floor may request. Drives texture-tier degradation. */
+/** PBR map kinds a surface may request. Drives texture-tier degradation. */
 export type MapKind = "albedo" | "normal" | "roughness" | "ao"
 
+/**
+ * Every flag here is read by something. When a knob stops being consulted it
+ * comes out — a quality config full of dead switches is worse than no config,
+ * because it reads as tuned when it is not.
+ */
 export interface QualityConfig {
-  particleCount: number
   bloomEnabled: boolean
-  chromaticAberration: boolean
   vignette: boolean
-  filmGrain: boolean
-  geometryDetail: "full" | "reduced" | "minimal"
   shadows: boolean
-  /** Which PBR maps to load. Empty ⇒ use a flat tinted material (weak GPUs). */
+  /** Which PBR maps to load. Empty ⇒ flat tinted materials, nothing fetched. */
   textureMaps: MapKind[]
   /** Advisory source size; 0 ⇒ no image textures at all. */
   textureSize: 2048 | 1024 | 512 | 0
+  /** Device pixel ratio ceiling. */
+  dpr: number
 }
 
 const ALL_MAPS: MapKind[] = ["albedo", "normal", "roughness"]
 
-const QUALITY_CONFIGS: Record<GpuTier, QualityConfig> = {
-  ultra: {
-    particleCount: 4000,
-    bloomEnabled: true,
-    chromaticAberration: false,
-    vignette: true,
-    filmGrain: false,
-    geometryDetail: "full",
-    shadows: false,
-    textureMaps: ALL_MAPS,
-    textureSize: 1024,
-  },
+const QUALITY: Record<GpuTier, QualityConfig> = {
   high: {
-    particleCount: 2000,
     bloomEnabled: true,
-    chromaticAberration: false,
     vignette: true,
-    filmGrain: false,
-    geometryDetail: "full",
-    shadows: false,
+    shadows: true,
     textureMaps: ALL_MAPS,
     textureSize: 1024,
+    dpr: 1.5,
   },
   medium: {
-    particleCount: 800,
     bloomEnabled: true,
-    chromaticAberration: false,
-    vignette: false,
-    filmGrain: false,
-    geometryDetail: "reduced",
+    vignette: true,
     shadows: false,
-    // Drop the (relief-only) normal map on integrated GPUs; keep albedo + roughness.
     textureMaps: ["albedo", "roughness"],
     textureSize: 512,
+    dpr: 1.25,
   },
   low: {
-    particleCount: 0,
     bloomEnabled: false,
-    chromaticAberration: false,
     vignette: false,
-    filmGrain: false,
-    geometryDetail: "minimal",
     shadows: false,
-    // No image textures — floors fall back to flat tinted materials.
     textureMaps: [],
     textureSize: 0,
+    dpr: 1,
   },
-  fallback: {
-    particleCount: 0,
+  // Phones, weak GPUs and prefers-reduced-motion all land here: the same seven
+  // stops, held still. Not a downgrade of the world — the same world, at rest.
+  flat: {
     bloomEnabled: false,
-    chromaticAberration: false,
     vignette: false,
-    filmGrain: false,
-    geometryDetail: "minimal",
     shadows: false,
     textureMaps: [],
     textureSize: 0,
+    dpr: 1,
   },
 }
 
-function detectGpuTier(): GpuTier {
-  if (typeof window === "undefined") return "fallback"
+function detectTier(): GpuTier {
+  if (typeof window === "undefined") return "flat"
 
-  // Mobile detection
-  const isMobile =
-    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-      navigator.userAgent
-    ) || window.innerWidth < 768
+  const coarse = window.matchMedia?.("(pointer: coarse)").matches ?? false
+  if (coarse || window.innerWidth < 900) return "flat"
+  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+    return "flat"
+  }
 
-  if (isMobile) return "fallback"
-
-  // Check WebGL support
   try {
     const canvas = document.createElement("canvas")
-    const gl =
-      canvas.getContext("webgl2") || canvas.getContext("webgl")
-    if (!gl) return "fallback"
+    const gl = canvas.getContext("webgl2")
+    if (!gl) return "flat"
 
-    const debugInfo = gl.getExtension("WEBGL_debug_renderer_info")
-    if (debugInfo) {
-      const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)
-      const rendererLower = renderer.toLowerCase()
+    // Deliberately not a renderer-string allowlist: those rot, and they were
+    // wrong about half the hardware in Ulaanbaatar anyway. Capability probes
+    // are coarser but they keep being true.
+    const maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE) as number
+    const maxVaryings = gl.getParameter(gl.MAX_VARYING_VECTORS) as number
+    const floatLinear = gl.getExtension("OES_texture_float_linear") !== null
+    const anisoExt = gl.getExtension("EXT_texture_filter_anisotropic")
+    const maxAniso = anisoExt
+      ? (gl.getParameter(anisoExt.MAX_TEXTURE_MAX_ANISOTROPY_EXT) as number)
+      : 1
 
-      // High-end GPUs
-      if (
-        rendererLower.includes("rtx") ||
-        rendererLower.includes("rx 6") ||
-        rendererLower.includes("rx 7") ||
-        rendererLower.includes("m1") ||
-        rendererLower.includes("m2") ||
-        rendererLower.includes("m3") ||
-        rendererLower.includes("m4") ||
-        rendererLower.includes("apple") ||
-        rendererLower.includes("gtx 1080") ||
-        rendererLower.includes("gtx 1070")
-      ) {
-        return "ultra"
-      }
+    const lost = gl.getExtension("WEBGL_lose_context")
+    lost?.loseContext()
 
-      // Mid-range GPUs
-      if (
-        rendererLower.includes("gtx") ||
-        rendererLower.includes("rx 5") ||
-        rendererLower.includes("arc")
-      ) {
-        return "high"
-      }
-
-      // Integrated GPUs
-      if (
-        rendererLower.includes("intel") ||
-        rendererLower.includes("mesa")
-      ) {
-        return "medium"
-      }
-    }
-
-    // Fallback: check max texture size as a rough proxy
-    const maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE)
-    if (maxTextureSize >= 16384) return "high"
-    if (maxTextureSize >= 8192) return "medium"
+    if (maxTex >= 16384 && maxAniso >= 16 && floatLinear) return "high"
+    if (maxTex >= 8192 && maxVaryings >= 15) return "medium"
     return "low"
   } catch {
-    return "fallback"
+    return "flat"
   }
 }
 
 export function useGpuTier() {
-  const [tier, setTier] = useState<GpuTier>("high") // default to high SSR
-  const [quality, setQuality] = useState<QualityConfig>(QUALITY_CONFIGS.high)
+  // SSR and the first client frame agree on "high" so the markup does not
+  // flicker; the probe replaces it before anything is drawn.
+  const [tier, setTier] = useState<GpuTier>("high")
 
   useEffect(() => {
-    const detected = detectGpuTier()
-    setTier(detected)
-    setQuality(QUALITY_CONFIGS[detected])
+    setTier(detectTier())
   }, [])
 
-  return { tier, quality, isFallback: tier === "fallback" }
+  return { tier, quality: QUALITY[tier], isFlat: tier === "flat" }
 }

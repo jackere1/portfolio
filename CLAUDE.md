@@ -1,221 +1,201 @@
-# encold.guru
+# encold.guru — AILCHIN, The Guest
 
 The personal site of Enkhbold Nyamdorj — a backend/systems engineer in Ulaanbaatar.
-This file is the standing brief for anyone (human or model) who works on it. Read it
-before you change anything. It is part architecture, part conscience.
+This file is the standing brief for anyone, human or model, who works on it. Read it
+before you change anything.
 
 ---
 
-## The one idea (build it, never narrate it)
+## What it is
 
-The whole site is one argument: **there is a line between the part of a system that is
-allowed to guess, drift, and be wrong, and the part that is never permitted to lie.**
-The work is the line between them.
+A photoreal Mongolian herder camp at dusk. You arrive on foot as a **guest**, circle the
+camp the way a guest actually would, step over the threshold, and end seated at the stove
+watching the Milky Way wheel past the toono — the crown ring of the roof. That final frame
+is also the logo, which means the visitor does not get shown the identity, they **arrive**
+at it.
 
-Everything here is downstream of that. It is not a portfolio. It does not list a stack
-or sell a résumé. The experience and the skill are meant to be *felt* through the work,
-never stated. The single place anything is stated plainly is the **colophon** — the
-buried document of fact — because that is the part that is not permitted to lie.
+**Realism is the goal, and there is no metaphor to service.** The previous version of this
+site was a dive capsule descending a shaft, where every object existed to argue a thesis
+about which parts of a system are allowed to be wrong. It was scrapped, deliberately, for
+being over-conceptual — the argument had to be decoded before the world could be enjoyed.
+Do not reintroduce it.
 
-There is a moral order to it, and the moral order is the design:
-
-- **Build the boundary first, the cleverness second.** The gate comes before the trick.
-- **Drift is allowed; lying is not.** Anything random must be *seeded and clamped* —
-  reproducible, bounded chaos. Never unbounded, never different between two loads.
-- **Decide what failure looks like in advance, and be honest enough to call it.**
-- **You fall to your reflexes, not your intentions.** So the conventions below are not
-  suggestions — they are the habits this codebase has drilled. Keep them under pressure.
-- **It is built at night, in a city the big tools forgot.** It must work for everyone:
-  reduced motion, touch, small screens, slow GPUs — not as an afterthought, as the point.
-
-If you ever find yourself adding copy that *explains* the concept, stop. The idea is
-felt, never narrated.
+**Portfolio content is deferred on purpose.** The world gets built first, and gets to be
+good, before any of Enkhbold's actual material is mapped into it. `lib/data.ts` holds the
+real record and is untouched, waiting. Do not invent metaphors to carry it.
 
 ---
 
-## What it is now: the dive
+## The route
 
-You ride a sealed capsule straight down a shaft. Scrolling lowers you; the world rises
-past a fixed, rendered cage. You pass distinct **floors** (stages), cross a **thermocline**
-(the boundary) from the drifting upper water into the still, locked deep, and settle on
-the **foundation** at the bottom — which is the colophon, the bedrock the dive rests on.
+Seven stops, driven by scroll. Sun elevation runs +3° to −19° across them, monotonically.
 
-- **The capsule** is fixed (the foreground that never moves — the rider, the constant).
-- **The medium** (the shaft and its floors) moves through it (real parallax, not drift).
-- **The descent is the argument**: from the guessing surface to the part that cannot lie.
+| | | |
+|---|---|---|
+| 01 | **The Track's End** | Tall feather grass where the twin-rut track dissolves into camp ground. Backlit Stipa seed heads burning gold. *Sun +2°* |
+| 02 | **The Buuts** | The grazed halo. The bankhar rises and barks. *Sun −0.5°* |
+| 03 | **The Corral** | Forty sheep pour in and bed down, dust hanging in the last backlight. *Sun −2°* |
+| 04 | **The East Wall** | The working spine at arm's length: jerrycans, milk cans, argal stack, the solar panel still angled at a dead sun. *Sun −4°* |
+| 05 | **The Door** | The orange ulzii door, amber leaking through the seams. Moths have found the light. *Sun −7°* |
+| 06 | **The Threshold** | Duck under the frame, step *over* the threshold, never on it. *Sun −10°* |
+| 07 | **The Toono** | A seat by the stove, looking up through the crown ring at the Milky Way. *Sun −18°* |
 
-Two speeds, always: the world drifts slow and soft; foreground responses (reveals, the
-cursor, instruments) snap instantly with no easing. The contrast is deliberate.
+**The circuit is genuinely clockwise and this is load-bearing.** The door faces south, and
+compass clockwise is N→E→S→W, so the approach comes from the **north** and rounds the
+**east** side to reach the door. The working spine is east because that is the women's
+domain, where water, milk, dung fuel and cooking gear actually live; the saddle and tack
+are west. An earlier draft put the spine on the west wall and was geometrically impossible.
 
 ---
 
 ## Stack
 
-Next.js 16 (App Router, Turbopack) · React 19 · TypeScript (strict) · Tailwind v4
-(theme lives in `app/globals.css` via `@theme`, not a JS config) · three.js via
-`@react-three/fiber` + `@react-three/drei` + `@react-three/postprocessing` · Lenis
-(smooth scroll) · Zustand (scroll state). Package manager: **pnpm**.
+Next.js 16 (App Router, Turbopack) · React 19 · TypeScript strict · Tailwind v4 (theme in
+`app/globals.css` via `@theme`, no JS config) · three 0.182 via `@react-three/fiber` v9 +
+`drei` + `@react-three/postprocessing` · Lenis · Zustand. **pnpm.**
 
-Fonts (three deliberate voices, wired in `app/layout.tsx`):
-- **Space Grotesk** — display / instruments (mechanical, not corporate).
-- **Fraunces** — the prose voice (the literary human inside the machine).
-- **Geist Mono** — every exact value: depth, coordinates, the colophon. Fixed width is
-  the part not permitted to lie.
+`@types/three` is pinned to `0.182.0` to match the runtime. `pnpm exec tsc --noEmit` is
+expected to print **zero** errors — not "fewer". If it prints any, you added them.
+`next.config.mjs` still sets `typescript.ignoreBuildErrors: true`; do not rely on it.
 
-`next.config.mjs` sets `typescript.ignoreBuildErrors: true`. The only standing type
-errors are the project-wide "missing @types/three" (`TS7016`) on every three-importing
-file and the JSX shader-material declarations — both pre-existing and harmless. Do not
-let *new* errors hide behind that flag; run `pnpm exec tsc --noEmit` and confirm your
-files add nothing beyond the known `three` noise.
+> Environment note: the pnpm store contains files owned by an unmapped UID, so
+> `pnpm install` fails at the bin-linking step with `EPERM ... chmod`. Packages still
+> resolve and land. Edit `package.json` directly and verify with `tsc`/`build`.
 
 ---
 
 ## Architecture
 
-Entry: `app/page.tsx` chooses `MobileFallback` (when `useGpuTier().isFallback` — mobile or
-weak GPU) or the 3D `Experience` (dynamic import, SSR off).
+`app/page.tsx` routes on `useGpuTier()`: the flat tier (phones, weak GPUs,
+`prefers-reduced-motion`) gets `FlatTier`; everyone else gets `Experience`.
 
-`components/experience/index.tsx` is the spine:
-- Lenis drives a `600vh` scroll; progress (0→1) lands in the Zustand store and on
-  `window.__lenis` (use `window.__lenis.scrollTo(p * max, {immediate:true})` to jump to a
-  depth when testing).
-- A fixed `<Canvas>` holds the 3D **medium**; DOM siblings hold the fixed foreground:
-  `Capsule`, `Levels`, `NavOverlay` (the depth gauge), `ScrollHint`, `Cursor`, `Colophon`.
+### The spine — one scalar drives everything
+- `lib/world.ts` — the site plan. **Axes: −Z north, +X east, +Y up, 1 unit = 1 metre.**
+  Bearings are compass degrees. Everything downstream reads this; never re-derive it.
+- `lib/sun-arc.ts` — the keyframed arc. `writeSunState(out, t)` fills a preallocated object
+  with every light, fog, exposure, star-opacity and phase value. **Deliberately free of any
+  three.js import** — the flat tier reads the same arc, and must not pull a renderer with it.
+- `lib/stops.ts` — the seven stops, their `t` values and camera poses.
+- `hooks/use-journey.ts` — `journey.t` is a plain mutable object written by Lenis and read
+  in `useFrame`. It lives **outside React** so travelling costs zero re-renders. The zustand
+  store carries only discrete state (active stop, phase) and only updates when those flip.
 
-The 3D scene (`Scene` in the same file): `CameraRig` · `Environment` · `Shaft` · `Seam` ·
-`PostProcessing`.
+### The world
+- `lib/heightfield.ts` — `heightAt(x, z)`, evaluated on the CPU so the camera, the grass and
+  the props all ground against the exact same surface the mesh is built from.
+- `lib/terrain-maps.ts` — bakes height, grass density, slope and bare-soil into one float
+  `DataTexture`. Sampled with NEAREST and **bilinear-filtered by hand in the shader**: float
+  textures are only linearly filterable behind an extension, and a silent fallback to point
+  sampling steps the grass base height by a third of a metre.
+- `components/world/sky.tsx` — the authored twilight dome (see below).
+- `components/world/terrain.tsx` — ground plus a coarse skirt that shares the hero patch's
+  exact height function and vertex colouring, offset in **depth** not in Y.
+- `components/world/grass.tsx` — ~330k instanced blades on a patch riding a snapped copy of
+  the camera position.
 
-### The medium (3D, behind glass)
-- `components/experience/camera-rig.tsx` — a **straight vertical descent**. Only Y tracks
-  scroll (`Y_SURFACE → Y_BEDROCK`), with a small pointer parallax. No swooping.
-- `components/experience/environment.tsx` — a dim ambient, a faint surface light, and a
-  **dive lamp** that rides with the camera. Fog tightens and darkens with depth (pressure).
-- `components/world/shaft.tsx` — the shaft: continuous corner **rails** + faint **rungs**
-  (passing structure / travel reference in the void) + a **divider** framing each cell +
-  each cell's **stage**. Stages are compact; the rest of each cell is travel void.
-- `components/world/seam.tsx` — the **thermocline**: a thin cool-blue beam at `SEAM_Y`. A
-  line, never a plane (a plane washes the view — that was a mistake we fixed). The camera
-  crosses it once, aligned to the Boundary level.
-- `lib/world-config.ts` — `Y_SURFACE`, `Y_BEDROCK`, `SEAM_Y`, `MAX_DEPTH`, the
-  `progress→depth` mapping, `regionFactor(y)` (0 below the seam = locked, 1 above = drift),
-  and clamped drift amplitudes.
-- `lib/floors.ts` — derives each floor **cell** from `SECTION_RANGES` so the visible floor
-  always matches the level in the HUD. Each floor gets a compact **stage band** (`yTop/
-  yBottom/yCenter/height`) inside its cell; `center`-anchored stages float mid-cell,
-  `floor`-anchored stages stand on the cell floor.
-
-### The capsule (fixed foreground DOM)
-- `components/ui/capsule.tsx` (+ `.capsule-*` in `globals.css`) — the rendered cage: a
-  beveled porthole with brushed-metal struts, rivets, bolts, glass, a pressure vignette,
-  and the **instruments**: live depth readout (the home for the coordinate number), the
-  dive-site coordinate, a status that flips at the thermocline, and the **manifest** latch
-  that opens the colophon.
-- `components/ui/nav-overlay.tsx` — the **depth gauge** on the right strut: a tick per
-  level, a thermocline marker, a cursor tracking depth; click a tick to dive there.
-
-### The levels (the words)
-- `components/sections/levels.tsx` — every level's content lives in **one fixed slot** in
-  the viewport and cross-faders in at its depth (marker `NN / 07`, the claim in Fraunces,
-  the body, and the proof artifact). The motion is the medium's; the words hold station.
-  That consistency is the meaning — text must never again be scattered across 3D space.
-
-### The proof (artifacts) and the truth (colophon)
-- `components/ui/proof-reveal.tsx` — surface → proof. Open by default now (we have the
-  space); toggles instantly, no easing.
-- `components/artifacts/*.tsx` — one concrete artifact per level that *demonstrates*
-  rather than states (a gate that refuses, a ledger that sums to zero, Mongolian
-  morphology, an audible cadence, a snapping reflex target, kill-dates, live UB time).
-- `components/ui/colophon.tsx` — the buried truth. Flat monospace, no glow, no decoration.
-  The real record, pulled from `lib/data.ts`. The one place that states plain fact.
-
-### Content
-- `lib/content.ts` — the **surface**: the seven levels' claims (the owner's voice), the
-  artifact each one reveals, the held-line/colophon copy. `[SPECIFIC]` marks placeholders
-  awaiting the owner's real material (named dead projects + real kill-dates, the games,
-  the chord, **verified** Mongolian morphology — the гэр example is a guess and on a site
-  about not lying it must be checked before launch).
-- `lib/data.ts` — the **truth**: name, location, email, and the real experiences /
-  projects / skills / contacts that the colophon prints. Do not turn this into surface copy.
+### Chrome
+- `components/ui/toono-mark.tsx` — the mark and the dial, one geometry doing both jobs.
+- `components/ui/chrome.tsx` — instruments, dial, entry ritual.
+- `components/ui/flat-tier.tsx` — the same seven stops, held still.
 
 ---
 
-## How to detail or add a floor
+## Things that are true and will break if you "fix" them
 
-This is the part future sessions will spend the most time on. The foundation is built so
-a floor is an isolated, self-contained scene — you can go arbitrarily deep on one without
-touching the rest.
+These each cost real time to find. They are not stylistic.
 
-A floor scene is `components/world/floors/<id>.tsx`, exporting
-`Floor<Name>({ yTop, yBottom, yCenter, height }: FloorProps)`. The contract:
-
-- It renders **only** three.js JSX (meshes / groups / instancedMesh / lines). No DOM, no
-  `"use client"`.
-- It builds inside its **stage band**: x,z ∈ [-4, 4] (the cell is `SHAFT_HALF = 5`),
-  y ∈ [`yBottom`, `yTop`], front facing +z. The camera sits at z≈7 looking toward -z at
-  (0, camY-3, 0), FOV 60 — compose for a porthole, centred, not too wide.
-- **Palette**: amber `#e8a020` is primary — `meshStandardMaterial` with a dark base color
-  + `emissive="#e8a020"` (intensity ~0.3–0.7) + metalness ~0.7 + roughness ~0.4 (a dive
-  lamp + dim ambient light it). Cool blue `#4060c0` only as a rare, meaningful accent.
-  No pure white.
-- **Randomness is seeded and clamped**: `makeRng("floor-<id>")` from `@/lib/prng` inside a
-  `useMemo`. Never `Math.random`. Never call `rng()` inside `useFrame`. Clamp every drift.
-- **Motion** is slow and ambient (this is the drifting world) — except where instant snap
-  *is* the meaning (see reflex). Drive it off `state.clock.elapsedTime` in `useFrame`.
-- **Respect reduced motion**: `useReducedMotion()` → freeze when true.
-- **Performance**: `instancedMesh` (reuse one `dummy` Object3D) for repeated elements.
-
-To add a floor: add a room to `lib/content.ts` + a range to `SECTION_RANGES`
-(`hooks/use-scroll-store.ts`), create the scene file, register it in the `sceneFor` map in
-`shaft.tsx`, and add an artifact if it reveals one. `lib/floors.ts` derives the rest.
-
-The seven stages today, each its own world: **gate** (a barred lock), **boundary** (order
-vs drift at the thermocline), **language** (vertical script columns), **music** (resonating
-strings), **reflex** (a snapping targeting grid), **kill-dates** (a graveyard of dated
-markers), **place** (Ulaanbaatar at night). They are first passes — detail them.
+1. **Preetham cannot render this site.** It is a daylight model, undefined below the
+   horizon, and two of seven stops are blue hour. It also double tone-maps under a
+   composer (its fragment bakes a display curve, and its tonemapping include becomes a
+   no-op once the composer forces `NoToneMapping`), and its `vSunfade` pins to ~1.0 at any
+   sane sun scale. The sky is an **authored** twilight model instead, and it renders the
+   solar afterglow, the earth's shadow and the Belt of Venus explicitly.
+2. **Exposure runs BEFORE bloom.** Bloom thresholds at luminance 1.0; if exposure is
+   applied after, that threshold drifts against the image for the whole journey. Bloom is a
+   convolution effect and takes its own pass, so an effect placed before it genuinely runs
+   first rather than being merged into the same shader.
+3. **AgX, never ACES.** ACES skews deep blues toward purple, and this is a navy sky for two
+   thirds of its length.
+4. **Use the `delta` argument in `useFrame`.** R3F already consumed the clock this frame;
+   `state.clock.getDelta()` returns ~0 and freezes anything driven by it.
+5. **`castShadow = false` does not free the shadow map.** Dispose it, or the one-shadow-
+   system-at-a-time budget is a fiction.
+6. **`fog={false}` on the sky dome and the grass.** Fog density rises exactly as the stars
+   arrive; without this the night sky is quietly eaten by the haze meant to hide the horizon.
+7. **The ground has no roughness map and roughness is pinned at 1.** Dry soil and dead grass
+   have no specular lobe worth the name. With a roughness map it picks up a sun glitter and
+   stops being ground and starts being a lake.
+8. **Wind travels.** Gust waves are functions of `dot(worldXZ, windDir) − time` with 14 m and
+   38 m wavelengths, and the bend is applied in **world space along the wind** *after* the
+   blade's own Y-rotation. Bending before the rotation makes every blade lean whichever way
+   it happens to face — a field blown in three hundred directions at once. Every blade also
+   carries its own phase offset in **every** term, so the field is never synchronised.
+9. **Never pass a `ref` to `<Bloom>`.** `@react-three/postprocessing` memoises effect args
+   with `JSON.stringify(props)`, and in React 19 a ref serialises into a circular structure
+   and throws.
+10. **The Milky Way's structure must be smooth noise.** Hashing `floor(d * k)` directly
+    quantises the sky into visible blocks a few degrees across.
 
 ---
 
-## Conventions (these are drilled habits; keep them under pressure)
+## Conventions
 
-- **Seeded, clamped randomness only.** It is the literal expression of the thesis. A
-  `Math.random()` in this repo is a bug, not a shortcut.
-- **No copy that explains the concept.** Evocative, never expository. If it narrates the
-  metaphor, cut it.
-- **Two speeds.** Scroll-/depth-driven = soft. Pointer-/keyboard-driven = instant
-  (`transition: none`). Don't ease a foreground response.
-- **Reduced motion + mobile are first-class.** Every motion gates on `useReducedMotion()`;
-  the CSS guard in `globals.css` kills animation under `prefers-reduced-motion`. The
-  mobile fallback (`components/ui/mobile-fallback.tsx`) carries the *same* dive with CSS
-  only (capsule frame, depth readout, the two regions, levels as `<details>`, the colophon).
-- **Performance is part of the aesthetic.** No heavy effect library for what a few lines of
-  shader/canvas/CSS can do. Instance repeated geometry. Cap DPR.
-- **The colophon is the only place that states fact.** Keep it flat, honest, undecorated.
-- **Keep the amber-on-navy geometric DNA.** Evolve it; don't replace it. Cool blue is the
-  boundary/instrument note — never ambient haze.
+- **Seeded, clamped randomness only.** `makeRng("name")` from `lib/prng.ts`. A
+  `Math.random()` in this repo is a bug. The world is identical on every load.
+- **Nothing reads wall-clock time except ambient motion.** The journey is a pure function of
+  `t`, so it scrubs exactly, in both directions.
+- **Zero re-renders while travelling, zero allocation in `useFrame`.** Mutate through refs
+  and preallocated objects.
+- **Two speeds.** The world is damped and soft; pointer and keyboard responses are instant.
+- **The camera moves only while the user scrolls.** Constant FOV, zero roll, stable horizon.
+  That is the whole anti-nausea contract.
+- **Authenticity is not decoration.** The solar panel, dish, motorcycle and dung stack stay
+  in frame — 70–90% of herder households have them, and omitting them is the romanticizing-
+  tourist error. Grass is gold and khaki, never green. All doors face south. Uni poles are
+  straight at 20°, never a Turkic dome. The Milky Way is grey-white, never purple.
+  **Banned:** lush green grass, wheat-field waving, eagle hunters (Kazakh, far west),
+  prayer-flag strings (Tibetan), fences, paved roads, streetlights.
+- **Palette is a timeline, not a swatch grid.** Tokens are grouped by when in the sun arc
+  they may exist; `--grass-gold` and `--belt-venus` die at t=0.48 and do not come back.
+  There is no white anywhere, and no fourth surface colour — no cards, no panels. Depth is
+  hairlines and vignette. Sacred blue is budgeted at ≤40px² per surface.
+- **The mark never rotates.** A ring with radiating ticks that spins is a loading spinner.
 
 ---
 
 ## Commands
 
 ```bash
-pnpm dev      # http://localhost:3000
-pnpm build    # production build (must exit 0)
-pnpm exec tsc --noEmit   # confirm no new type errors beyond the known three/JSX noise
+pnpm dev          # http://localhost:3000
+pnpm build        # must exit 0
+pnpm exec tsc --noEmit   # must print ZERO errors
 ```
 
-Verify visually by driving depth with `window.__lenis.scrollTo(p * max, {immediate:true})`
-and screenshotting at: surface (0), the thermocline crossing (~0.2), a deep floor, and the
-foundation (~0.98). Confirm the capsule and readout are pixel-fixed at every depth while
-the medium rises; each level lands in the same slot; the thermocline reads as a line, not
-a wash; reduced-motion freezes the drift; 390px width gets the mobile dive. Zero console
-errors.
+Drive the journey directly with `window.__ailchin.seek(t)` and screenshot at
+t = 0.04 (the backlit grass), 0.31 (the Belt of Venus, looking anti-solar), 0.62 (deep blue
+hour) and 0.95 (the Milky Way). Confirm: the grass burns gold rather than white; the far
+land has no seam; the sky never bands; 390px width gets the flat tier; zero console errors.
+
+Measured 2026-08-03 on Intel Meteor Lake integrated graphics: 16.7 ms median, 17.5 ms worst
+at stop 01 with 330k blades — vsync-locked, with headroom.
 
 ---
 
-## A note to whoever comes next
+## Where it is now
 
-This site is small and it is honest. It would be easy to make it more impressive and less
-true — to add a particle storm, a bloom-soaked hero, a clever generative flourish that
-drifts a little differently every time and means nothing. Resist it. The whole point is
-the line: the part that may be beautiful and wrong, and the part that must be plain and
-right. Build the boundary first. Then be as clever as you like on the correct side of it.
+**P0 is done: the world exists and the whole light arc works.** Terrain, grass, sky, camera,
+render pipeline, chrome and the flat tier are in. **Nothing man-made has been built yet** —
+no ger, no corral, no props, no animals, no interior, no audio. Stops 04–07 currently look
+at empty ground where the camp will stand.
+
+Next is the ger, from **one parameterised generator** that yields every ger in the world:
+instanced khana lattice, ~80 straight uni poles at 20°, a lathe-swept toono with crossed
+spokes, canvas with a dust-stain gradient rising from the ground line, tension bands,
+stone-weighted ropes, and the south-facing orange ulzii door.
+
+The full plan, including the v1 cut list and the phase order, is at
+`~/.claude/plans/lets-build-everything-from-golden-tide.md`.
+
+**A cultural review pass by the owner is a launch gate, not a nicety.** The route, the ger
+proportions, the camp layout and the east/west domestic split are researched but not lived,
+and on a site whose whole argument is about not lying, that check is load-bearing.
