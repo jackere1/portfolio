@@ -39,6 +39,16 @@ export interface Stop {
   /** How far pointer free-look may stray here, in degrees. Wider at rest. */
   yawRange: number
   pitchRange: number
+  /**
+   * Fraction of the segment LEAVING this stop that the camera holds still for.
+   *
+   * Used once, at the arrival: you call and then you WAIT, and you do not
+   * approach until the household has come out. Implemented as a dwell in the
+   * scroll-to-pose mapping rather than as a refusal to scroll — the camera
+   * moving one-to-one with the gesture is the anti-nausea contract, and a
+   * scrollbar that stops responding reads as a bug, not as etiquette.
+   */
+  dwell?: number
 }
 
 export const STOPS: readonly Stop[] = [
@@ -71,6 +81,8 @@ export const STOPS: readonly Stop[] = [
     pitch: -3,
     yawRange: 26,
     pitchRange: 12,
+    // You have announced yourself. Now you wait to be received.
+    dwell: 0.45,
   },
   {
     id: "east-side",

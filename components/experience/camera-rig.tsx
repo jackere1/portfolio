@@ -64,7 +64,13 @@ function writePose(out: Pose, t: number): void {
     if (t <= STOPS[i].t) {
       const a = STOPS[i - 1]
       const b = STOPS[i]
-      const k = smootherstep((t - a.t) / (b.t - a.t))
+      let raw = (t - a.t) / (b.t - a.t)
+      // A dwell holds the pose at the start of the segment, then covers the
+      // whole distance in what is left. Scroll keeps responding throughout.
+      if (a.dwell) {
+        raw = raw <= a.dwell ? 0 : (raw - a.dwell) / (1 - a.dwell)
+      }
+      const k = smootherstep(raw)
       out.x = a.x + (b.x - a.x) * k
       out.z = a.z + (b.z - a.z) * k
       out.eye = a.eye + (b.eye - a.eye) * k

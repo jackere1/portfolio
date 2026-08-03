@@ -5,6 +5,7 @@ import { journey, useJourneyStore } from "@/hooks/use-journey"
 import { activeStop, STOPS } from "@/lib/stops"
 import { createSunState, localTimeAt, writeSunState } from "@/lib/sun-arc"
 import { ToonoDial, ToonoMark } from "./toono-mark"
+import { Soundscape } from "@/components/audio/soundscape"
 
 // Instruments, not website chrome. Two values only — the local time at the site
 // and the sun's elevation — because those are the two the sky can be checked
@@ -179,6 +180,7 @@ export function Chrome() {
         </>
       )}
 
+      <Soundscape />
       <Entry />
     </div>
   )

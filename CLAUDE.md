@@ -230,8 +230,12 @@ t = 0.04 (the backlit grass), 0.31 (the Belt of Venus, looking anti-solar), 0.62
 hour) and 0.95 (the Milky Way). Confirm: the grass burns gold rather than white; the far
 land has no seam; the sky never bands; 390px width gets the flat tier; zero console errors.
 
-Measured 2026-08-03 on Intel Meteor Lake integrated graphics: 16.7 ms median, 17.5 ms worst
-at stop 01 with 330k blades — vsync-locked, with headroom.
+**Measured on the PRODUCTION build**, 2026-08-03, Intel Meteor Lake integrated graphics,
+1440x900 at DPR 1.5: 20.6–22.0 ms median across all nine stops (p95 22.8–24.6). That is about
+46 fps and it is BELOW vsync — a real regression from the 16.7 ms the empty world held, and it
+is close to uniform across every stop, which points at the vegetation (383k blades, three draw
+calls, and a vertex shader doing a four-tap bilinear terrain sample per blade) rather than at
+any one object. **Not yet investigated.** Do not quote 60 fps for this scene.
 
 ---
 
@@ -266,8 +270,20 @@ worse than none.
 khadag are the only blue in this world besides the sky, and that is the whole cool-colour
 budget spent in one place.
 
-**Still missing:** audio, the зэл (the foal tether line that says late summer), the horses,
-and the arrival HOLD — the scroll should refuse to advance until the host comes out.
+**Audio** (`components/audio/soundscape.tsx`) is SYNTHESISED, not sampled — filtered noise and
+shaped oscillators built in WebAudio. That is the better answer here, not a compromise: it
+downloads nothing, it is seeded and therefore identical every load like the rest of the world,
+and it is driven continuously by the journey scalar instead of crossfading clips. A recording
+of a specific evening would also be a recording of a specific PLACE, and this place is
+composed, not photographed. Four beds (wind, crickets, fire, room tone) and two one-shots (the
+bark, a milk pail), muted until the entry gesture.
+
+**The arrival hold** is a dwell in the scroll-to-pose mapping (`Stop.dwell`), not a refusal to
+scroll. The camera moving one-to-one with the gesture is the anti-nausea contract, and a
+scrollbar that stops responding reads as a bug rather than as etiquette.
+
+**Still missing:** the зэл (the foal tether line that says late summer) and the horses; and the
+frame budget above.
 
 The full plan, including the v1 cut list and the phase order, is at
 `~/.claude/plans/lets-build-everything-from-golden-tide.md`.
