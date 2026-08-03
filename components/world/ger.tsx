@@ -1,9 +1,12 @@
 "use client"
 
 import { useLayoutEffect, useMemo, useRef } from "react"
+import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import { generateGer, gerApexY, type GerParams } from "@/lib/ger"
 import { Hearth } from "./hearth"
+import { journey } from "@/hooks/use-journey"
+import { createSunState, writeSunState } from "@/lib/sun-arc"
 
 // One generator, one component. Every ger in the world comes through here.
 //
@@ -101,14 +104,16 @@ export function Ger({
 
       {/* --- the crown ----------------------------------------------------- */}
       <mesh geometry={build.toono} castShadow>
-        <meshStandardMaterial color="#b0641f" roughness={0.74} metalness={0} />
+        <meshStandardMaterial color="#a85c1c" roughness={0.74} metalness={0} />
       </mesh>
-      {/* The one painted-blue element on the whole structure. */}
+      {/* Red-orange, NOT blue. Mongolian ger woodwork is red and reddish-
+          yellow, and the toono above all: the crown is the sun and the uni are
+          its rays. It should be the warmest wood in the ger, not the coolest. */}
       <instancedMesh
         ref={spokeRef}
         args={[spoke, undefined, build.toonoSpokes.length]}
       >
-        <meshStandardMaterial color="#3f6ea8" roughness={0.7} metalness={0} />
+        <meshStandardMaterial color="#b4671f" roughness={0.72} metalness={0} />
       </instancedMesh>
 
       <instancedMesh
@@ -133,6 +138,9 @@ export function Ger({
       >
         <meshStandardMaterial color="#c06a1e" roughness={0.7} metalness={0} />
       </instancedMesh>
+
+      {/* --- the urkh: the felt over the crown ------------------------------ */}
+      <Urkh build={build} />
 
       {/* --- tension bands -------------------------------------------------- */}
       {build.bands.map((b, i) => (
@@ -182,5 +190,42 @@ export function Ger({
         />
       </mesh>
     </group>
+  )
+}
+
+/**
+ * The urkh (өрх) — the square of felt that covers the toono.
+ *
+ * It lies folded back over the north slope through the day to let the sun in,
+ * and is drawn across the crown after dark. That is ordinary daily practice,
+ * and it is also the reason this site's journey ends outdoors: a ger whose
+ * crown is left open to the stars reads as a poor one.
+ */
+function Urkh({ build }: { build: ReturnType<typeof generateGer> }) {
+  const ref = useRef<THREE.Mesh>(null)
+  const sun = useMemo(() => createSunState(), [])
+  const { size, folded, drawn } = build.urkh
+
+  useFrame(() => {
+    writeSunState(sun, journey.t)
+    const m = ref.current
+    if (!m) return
+    const k = sun.urkh
+    m.position.lerpVectors(folded, drawn, k)
+    // Folded double over the roof by day; flat across the crown by night.
+    m.scale.set(1, 1, 0.5 + 0.5 * k)
+    m.rotation.x = -Math.PI / 2 + (1 - k) * 0.36
+  })
+
+  return (
+    <mesh ref={ref} castShadow>
+      <planeGeometry args={[size, size]} />
+      <meshStandardMaterial
+        color="#6e6455"
+        roughness={0.97}
+        metalness={0}
+        side={THREE.DoubleSide}
+      />
+    </mesh>
   )
 }

@@ -95,7 +95,7 @@ export function FlatTier() {
             }}
           >
             <div className="t-value" style={{ fontSize: 11, opacity: 0.65 }}>
-              {String(stop.index).padStart(2, "0")} / 07
+              {String(stop.index).padStart(2, "0")} / {String(STOPS.length).padStart(2, "0")}
             </div>
             <h2
               className="t-prose"

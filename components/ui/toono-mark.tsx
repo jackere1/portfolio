@@ -113,22 +113,26 @@ export function ToonoMark({
 // seven stops. Circumference is 2 pi 19 = 119.38; seven segments with seven
 // six-degree gaps gives 45.43 degrees each.
 const CIRC = 2 * Math.PI * RIM_R
-const SEGMENTS = 7
 const GAP_DEG = 6
-const SEG_DEG = (360 - GAP_DEG * SEGMENTS) / SEGMENTS
-const SEG_LEN = (SEG_DEG / 360) * CIRC
-const GAP_LEN = (GAP_DEG / 360) * CIRC
 
 export function ToonoDial({
   size = 66,
   stopIndex,
+  segments,
   onSeek,
 }: {
   size?: number
   /** 1-based index of the stop currently composed. */
   stopIndex: number
+  /** How many stops the journey has. The route is allowed to change length. */
+  segments: number
   onSeek?: (index: number) => void
 }) {
+  const SEGMENTS = Math.max(1, segments)
+  const SEG_DEG = (360 - GAP_DEG * SEGMENTS) / SEGMENTS
+  const SEG_LEN = (SEG_DEG / 360) * CIRC
+  const GAP_LEN = (GAP_DEG / 360) * CIRC
+
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" fill="none">
       {/* Unfilled track. */}

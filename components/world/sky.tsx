@@ -46,6 +46,13 @@ const FRAG = /* glsl */ `
   uniform float uStarOpacity;
   uniform vec3  uZenith;
   uniform vec3  uHorizon;
+  uniform vec3  uSunDisc;   // absolute radiance of the disc, keyframed
+  uniform float uHaze;      // vertical Mie optical depth
+  uniform float uMieGain;   // aureole strength
+
+  // Vertical Rayleigh optical depth for an observer at ~1400 m. The steppe
+  // sits high, which is exactly why its zenith is deeper than a sea-level one.
+  const vec3 TAU_R = vec3(0.0390, 0.0910, 0.2222);
 
   // --- deterministic star hashing -----------------------------------------
   float hash13(vec3 p) {
@@ -125,8 +132,27 @@ const FRAG = /* glsl */ `
     float az  = dot(dH, sunH);
 
     // --- base gradient ----------------------------------------------------
+    // ONE control, and a seam is impossible by construction: the endpoints are
+    // a single continuous keyframe table across the whole arc, and only the
+    // RAMP between them morphs. Every daylight-only term below is multiplied
+    // by wDay, so it is identically zero at and under +1.5 degrees, and every
+    // twilight-only term is already zero at and over it. There is one image,
+    // and its shape changes — nothing crossfades between two pictures.
+    float wDay = smoothstep(1.5, 6.0, uSunElev);
+
     float up  = clamp(h, 0.0, 1.0);
-    vec3 col  = mix(uHorizon, uZenith, pow(up, 0.42));
+
+    // Daylight falls off with air mass; dusk is close to a plain power ramp.
+    float am    = 1.0 / (max(up, 0.0) + 0.15);
+    vec3  ext   = exp(-TAU_R * (am - 1.0) * 3.6);
+    vec3  dayC  = mix(uHorizon, uZenith, clamp(ext.b * 1.05, 0.0, 1.0));
+    vec3  duskC = mix(uHorizon, uZenith, pow(up, 0.42));
+    vec3  col   = mix(duskC, dayC, wDay);
+
+    // Mie haze whitens and desaturates the low sky by day. It is what makes a
+    // daytime horizon read as distance rather than as a painted band.
+    float mie = exp(-max(up, 0.0) / max(uHaze, 0.001));
+    col = mix(col, vec3(dot(col, vec3(0.33)) * 1.04), mie * 0.30 * wDay);
 
     // Below the true horizon the dome only ever shows through distant haze.
     col = mix(col, uHorizon * 0.55, smoothstep(0.0, -0.09, h));
@@ -172,9 +198,13 @@ const FRAG = /* glsl */ `
     // what will make it read larger than 12 pixels.
     float cosSun  = dot(d, normalize(uSunDir));
     float disc    = smoothstep(0.9999860, 0.9999935, cosSun);
+    // Two lobes: the tight forward-scattered aureole, and the broad glare that
+    // a high sun spreads over half the sky through haze.
     float aureole = pow(max(cosSun, 0.0), 520.0);
-    float visible = smoothstep(-1.4, 0.4, uSunElev);
-    col += vec3(1.9, 1.12, 0.58) * (disc * 30.0 + aureole * 0.55) * visible;
+    float glare   = pow(max(cosSun, 0.0), 8.0) * mie * uMieGain * 0.11 * wDay;
+    col += uSunDisc * disc;
+    col += uSunDisc * aureole * 0.018;
+    col += normalize(uSunDisc + vec3(1e-4)) * glare;
 
     // --- night ------------------------------------------------------------
     if (uStarOpacity > 0.001) {
@@ -200,6 +230,9 @@ export function Sky() {
       uStarOpacity: { value: 0 },
       uZenith: { value: new THREE.Color(0.06, 0.12, 0.3) },
       uHorizon: { value: new THREE.Color(0.5, 0.4, 0.34) },
+      uSunDisc: { value: new THREE.Color(57, 34, 17) },
+      uHaze: { value: 0.115 },
+      uMieGain: { value: 0.9 },
     }),
     []
   )
@@ -211,21 +244,14 @@ export function Sky() {
     u.uSunElev.value = sun.elevationDeg
     u.uStarOpacity.value = sun.starOpacity
 
-    // Zenith and horizon derive from the same colours the lights read, so the
-    // sky and the scene can never disagree about what time it is — but scaled
-    // well down. A dusk sky is not a bright surface; the only bright things in
-    // the frame are the sun and what it is shining through. Push these up and
-    // AgX compresses the whole image into milk and takes the colour with it.
-    u.uZenith.value.setRGB(
-      sun.skyColor.r * 0.11,
-      sun.skyColor.g * 0.17,
-      sun.skyColor.b * 0.42
-    )
-    u.uHorizon.value.setRGB(
-      sun.fogColor.r * 0.72,
-      sun.fogColor.g * 0.6,
-      sun.fogColor.b * 0.62
-    )
+    // Zenith, horizon and disc are their own keyframe tables now. They used to
+    // be derived from the hemisphere colours by a fixed multiplier, but that
+    // multiplier was only ever true at dusk.
+    u.uZenith.value.setRGB(sun.zenith.r, sun.zenith.g, sun.zenith.b)
+    u.uHorizon.value.setRGB(sun.horizon.r, sun.horizon.g, sun.horizon.b)
+    u.uSunDisc.value.setRGB(sun.sunDisc.r, sun.sunDisc.g, sun.sunDisc.b)
+    u.uHaze.value = sun.haze
+    u.uMieGain.value = sun.mieGain
 
     // The dome is a backdrop at infinity: it follows the camera's position but
     // never its rotation.

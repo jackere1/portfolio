@@ -45,6 +45,8 @@ export const HOST_GER: GerParams = {
 }
 
 export interface GerBuild {
+  /** The felt crown flap: where it lies folded by day and drawn by night. */
+  urkh: { size: number; folded: THREE.Vector3; drawn: THREE.Vector3 }
   /** Cover: the wall band and the straight-sided roof cone. */
   wallCover: THREE.BufferGeometry
   roofCover: THREE.BufferGeometry
@@ -228,8 +230,12 @@ export function generateGer(params: GerParams): GerBuild {
   }
 
   // --- bagana: the two columns holding the crown ---------------------------
+  // The two columns stand ON the ring, not inside it: the toono torus has
+  // radius `toonoRadius`, so anything at a smaller x is holding up air. You
+  // must never walk between them, which is also why the interior camera path
+  // passes outside the west one.
   const bagana: THREE.Matrix4[] = []
-  for (const sx of [-0.46, 0.46]) {
+  for (const sx of [-toonoRadius, toonoRadius]) {
     mid.set(sx, apexY / 2, 0)
     scale.set(1, apexY, 1)
     bagana.push(
@@ -285,6 +291,21 @@ export function generateGer(params: GerParams): GerBuild {
     )
   }
 
+  // The urkh (өрх): the square of felt that covers the crown. Folded back over
+  // the north slope through the day to let the sun in, drawn across after dark.
+  // Its corner ropes run down over the cover to the ground.
+  const urkhSize = toonoRadius * 2.45
+  // Folded back onto the NORTH roof slope, and actually sitting on it: the
+  // roof drops (radius - r) * tan(pitch) from the crown, so anything placed at
+  // the crown's height floats above the felt it is supposed to be lying on.
+  const urkhR = toonoRadius * 1.7
+  const urkhFolded = new THREE.Vector3(
+    0,
+    wallHeight + (radius - urkhR) * Math.tan(pitch) + 0.035,
+    -urkhR
+  )
+  const urkhDrawn = new THREE.Vector3(0, apexY + 0.035, 0)
+
   // The stove sits under the crown, so its chimney leaves through the toono.
   const chimney = {
     base: new THREE.Vector3(0, apexY - 0.05, 0.22),
@@ -292,6 +313,7 @@ export function generateGer(params: GerParams): GerBuild {
   }
 
   return {
+    urkh: { size: urkhSize, folded: urkhFolded, drawn: urkhDrawn },
     wallCover,
     roofCover,
     uni,

@@ -28,17 +28,26 @@ real record and is untouched, waiting. Do not invent metaphors to carry it.
 
 ## The route
 
-Seven stops, driven by scroll. Sun elevation runs +3° to −19° across them, monotonically.
+**Nine stops, afternoon through to night.** Sun elevation runs +25° to −19°, monotonically.
+
+**The journey does NOT end inside looking up through the toono at the Milky Way.** For
+Mongolians, stars seen through an uncovered crown signify **poverty** — the urkh (the felt
+flap) is drawn over the toono after dark, and a ger that cannot cover its own crown is a poor
+one. Looking up through it at daylight or the last blue is normal and iconic; it is
+specifically stars that carry the omen. So the interior beats happen while there is still
+light in the sky, and the visitor comes back **out** for the night. Warmth first, then vastness.
 
 | | | |
 |---|---|---|
-| 01 | **The Track's End** | Tall feather grass where the twin-rut track dissolves into camp ground. Backlit Stipa seed heads burning gold. *Sun +2°* |
-| 02 | **The Buuts** | The grazed halo. The bankhar rises and barks. *Sun −0.5°* |
-| 03 | **The Corral** | Forty sheep pour in and bed down, dust hanging in the last backlight. *Sun −2°* |
-| 04 | **The East Wall** | The working spine at arm's length: jerrycans, milk cans, argal stack, the solar panel still angled at a dead sun. *Sun −4°* |
-| 05 | **The Door** | The orange ulzii door, amber leaking through the seams. Moths have found the light. *Sun −7°* |
-| 06 | **The Threshold** | Duck under the frame, step *over* the threshold, never on it. *Sun −10°* |
-| 07 | **The Toono** | A seat by the stove, looking up through the crown ring at the Milky Way. *Sun −18°* |
+| 01 | **The Track's End** | Mid-afternoon on open ground; the camp is a white speck. You are being seen coming. *Sun +23°, 16:34* |
+| 02 | **The Camp Seen** | Close enough to be noticed. A guest announces and waits. *Sun +15.5°, 17:28* |
+| 03 | **The East Side** | The working spine, at a respectful radius rather than arm's length. *Sun +8.5°, 18:26* |
+| 04 | **The Herd Comes Home** | Golden hour, the loudest beat, placed before the world empties. *Sun +3°, 19:21* |
+| 05 | **The Door** | The south face with the sun on the horizon behind you. *Sun −0.6°, 20:06* |
+| 06 | **The Threshold** | Duck under the frame, step *over* the bosgo, never on it. *Sun −3.2°, 20:29* |
+| 07 | **The Hearth** | Seated on the **west** (guests') side, looking up through the crown at the **last blue**. *Sun −5°, 20:46* |
+| 08 | **Back Out** | Behind you the ger has sealed itself: urkh drawn, khayaa down, door shut. *Sun −11.5°, 21:32* |
+| 09 | **Under It** | Open ground, the sky the whole frame. Where a Mongolian actually meets the night. *Sun −17.5°, 22:19* |
 
 **The circuit is genuinely clockwise and this is load-bearing.** The door faces south, and
 compass clockwise is N→E→S→W, so the approach comes from the **north** and rounds the
@@ -158,7 +167,17 @@ These each cost real time to find. They are not stylistic.
     intensity on top dims everything twice and turns stops 03–05 into black silhouettes
     with every prop invisible. The intensity RISES as the sun crosses the horizon, because
     that is the moment the sky stops being a fill light and becomes the key light.
-15. **Nothing may fill the toono opening.** The crown glow is a RING at the rim. It was once
+15. **The crown is the SUN and its wood is red-orange, never blue.** Mongolian ger woodwork is
+    red and reddish-yellow; the toono in particular is coloured for the sun, with the uni as
+    its rays. It should be the warmest wood in the ger. (An earlier version painted the spokes
+    khadag blue, which inverted the symbolism.)
+16. **The urkh is drawn after dark.** It is folded back over the north roof slope by day to let
+    the sun in, and drawn across the crown when it gets dark — along with the khayaa rolling
+    down and the door shutting. Both are driven off sun elevation in `lib/sun-arc.ts`, so the
+    ger visibly seals itself while the guest is inside, and stop 08 walks back out into that.
+17. **The bagana stand ON the toono ring** (x = ±`toonoRadius`), not inside it. And you must
+    never walk between them — the interior camera path passes outside the west one.
+18. **Nothing may fill the toono opening.** The crown glow is a RING at the rim. It was once
     a filled disc, which is a lid on the only hole the sky comes through, and stop 07 is
     that hole. The galactic plane in `sky.tsx` is also aimed so the band genuinely falls
     inside what the crown frames from the seat — check both if you move either.

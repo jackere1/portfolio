@@ -164,10 +164,10 @@ export function Chrome() {
               gap: 12,
             }}
           >
-            <ToonoDial stopIndex={stop.index} onSeek={seek} />
+            <ToonoDial stopIndex={stop.index} segments={STOPS.length} onSeek={seek} />
             <div style={{ textAlign: "right" }}>
               <div className="t-value" style={{ fontSize: 11, opacity: 0.7 }}>
-                {String(stop.index).padStart(2, "0")} / 07
+                {String(stop.index).padStart(2, "0")} / {String(STOPS.length).padStart(2, "0")}
               </div>
               <div className="t-stencil" style={{ fontSize: 11 }}>
                 {stop.label}

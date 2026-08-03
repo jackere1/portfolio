@@ -1,11 +1,24 @@
-// The seven stops. Positions are XZ only — the camera rig grounds them against
-// the heightfield at runtime, so a change to the terrain can never leave a stop
+// The route. Positions are XZ only — the camera rig grounds them against the
+// heightfield at runtime, so a change to the terrain can never leave a stop
 // floating or buried.
 //
-// The circuit is genuinely clockwise: the bearing of each camera position from
-// the ger increases monotonically (16 -> 24 -> 77 -> 176 degrees), approaching
-// from the north, rounding the working east side, and arriving at the south
-// door. See lib/world.ts for why the working spine is east.
+// AFTERNOON THROUGH TO NIGHT, and the shape of it is cultural, not cinematic.
+//
+// It does NOT end inside looking up through the toono at the Milky Way. For
+// Mongolians, stars seen through an uncovered crown signify poverty — the urkh
+// is drawn over the toono after dark, and a ger that cannot cover its own
+// crown is a poor one. Looking up through it at DAYLIGHT or the last blue is
+// normal and iconic; it is specifically stars that carry the omen. So the
+// interior beats happen while there is still light in the sky, and the visitor
+// comes back OUT for the night. Warmth and enclosure first, then vastness.
+//
+// The circuit stays clockwise (нар зөв): the bearing of each camera position
+// from the ger increases monotonically while the visitor is outside,
+// approaching from the north, rounding the working east side at a respectful
+// distance, and arriving at the south door.
+//
+// Inside, the guest sits WEST. West is the men's and guests' side; east is the
+// women's and the family's. Putting a guest on the east side is a real error.
 
 import { EYE_HEIGHT } from "./world"
 
@@ -32,83 +45,84 @@ export const STOPS: readonly Stop[] = [
   {
     id: "track",
     index: 1,
-    t: 0.04,
+    t: 0.05,
     label: "The Track's End",
-    // Out in the ungrazed grass, north-north-east of camp. The look is aimed
-    // WNW into the setting sun: this is the backlit-Stipa frame, and the camp
-    // is revealed later by the look track swinging south, not by moving.
+    // Mid-afternoon on open ground, out where the twin ruts come in. The camp
+    // is a small white speck; you are being seen coming, which is the point.
     x: 18,
     z: -104,
     eye: EYE_HEIGHT,
-    bearing: 288,
-    pitch: -2,
+    bearing: 196,
+    pitch: -3,
+    yawRange: 28,
+    pitchRange: 14,
+  },
+  {
+    id: "seen",
+    index: 2,
+    t: 0.17,
+    label: "The Camp Seen",
+    // Close enough to be noticed. A guest announces and WAITS — you never walk
+    // straight in, and you never come round the back.
+    x: 12,
+    z: -38,
+    eye: EYE_HEIGHT,
+    bearing: 191,
+    pitch: -3,
+    yawRange: 26,
+    pitchRange: 12,
+  },
+  {
+    id: "east-side",
+    index: 3,
+    t: 0.29,
+    label: "The East Side",
+    // The working side, but at a respectful radius rather than at arm's length.
+    x: 9.5,
+    z: -6.5,
+    eye: 1.6,
+    bearing: 233,
+    pitch: -9,
     yawRange: 26,
     pitchRange: 14,
   },
   {
-    id: "buuts",
-    index: 2,
-    t: 0.17,
-    label: "The Buuts",
-    x: 10,
-    z: -34,
-    eye: EYE_HEIGHT,
-    bearing: 196,
-    pitch: -3,
-    yawRange: 24,
-    pitchRange: 12,
-  },
-  {
-    id: "corral",
-    index: 3,
-    t: 0.31,
-    label: "The Corral",
-    x: 10,
-    z: -22,
-    eye: EYE_HEIGHT,
-    bearing: 145,
-    pitch: -4,
-    yawRange: 28,
-    pitchRange: 12,
-  },
-  {
-    id: "east-wall",
+    id: "herd",
     index: 4,
-    t: 0.47,
-    label: "The East Wall",
-    x: 5.9,
-    z: -1.2,
-    eye: 1.5,
-    bearing: 249,
-    // The spine passes at arm's length, which means looking DOWN at it. Held
-    // level, everything on the ground sat below the frame and the whole beat
-    // was a blank wall.
-    pitch: -13,
-    yawRange: 22,
+    t: 0.41,
+    label: "The Herd Comes Home",
+    // Golden hour. The loudest beat of the day, and it is deliberately placed
+    // before the world begins to empty.
+    x: 7.4,
+    z: 3.6,
+    eye: 1.6,
+    bearing: 47,
+    pitch: -6,
+    yawRange: 30,
     pitchRange: 14,
   },
   {
     id: "door",
     index: 5,
-    t: 0.62,
+    t: 0.52,
     label: "The Door",
+    // The south face, with the sun on the horizon behind you.
     x: 0.4,
     z: 6.2,
     eye: 1.55,
     bearing: 353,
-    pitch: -1,
+    pitch: -2,
     yawRange: 20,
     pitchRange: 16,
   },
   {
     id: "threshold",
     index: 6,
-    t: 0.78,
+    t: 0.62,
     label: "The Threshold",
-    // Ducking under a 1.5 m frame. The step goes OVER the threshold, never on
-    // it — the rule encoded as a camera move, felt and never explained.
+    // Duck under the frame and step OVER the bosgo, never on it.
     x: 0,
-    z: 1.2,
+    z: 1.35,
     eye: 1.32,
     bearing: 0,
     pitch: -6,
@@ -116,26 +130,54 @@ export const STOPS: readonly Stop[] = [
     pitchRange: 10,
   },
   {
-    id: "toono",
+    id: "hearth",
     index: 7,
-    t: 0.93,
-    label: "The Toono",
-    // A seat by the stove. Free look opens fully here — this is the only place
-    // the visitor may look straight up, and the frame they find is the logo.
-    // Aimed THROUGH the crown, not merely upward. From a seat at (0.9, -0.6)
-    // the toono centre at (0, 2.264, 0) sits on bearing 236 and 53 degrees up;
-    // at 1.8 m away the 0.7 m ring subtends about 43 degrees, so it frames the
-    // sky inside a 60 degree lens with room to spare. Aim anywhere else and you
-    // are looking at the underside of a roof.
-    x: 0.9,
-    z: -0.6,
+    t: 0.72,
+    label: "The Hearth",
+    // Seated on the WEST side, the guests' side, looking up through the crown
+    // at the LAST BLUE — there is still light in the sky, and there must be.
+    // From (-0.95, -0.55) the crown centre at (0, 2.264, 0) bears 120 and sits
+    // 52 degrees up, which frames it inside a 60 degree lens.
+    x: -0.95,
+    z: -0.55,
     eye: 0.85,
-    bearing: 236,
-    pitch: 53,
-    yawRange: 70,
-    // Kept under (90 - pitch) so free look can never tip past vertical and roll
-    // the horizon over.
+    bearing: 120,
+    pitch: 52,
+    yawRange: 60,
+    // Kept under (90 - pitch) so free look can never tip past vertical.
     pitchRange: 30,
+  },
+  {
+    id: "back-out",
+    index: 8,
+    t: 0.85,
+    label: "Back Out",
+    // Through the door again. Behind you the ger has sealed itself: the urkh
+    // drawn over the crown, the khayaa rolled down, the door shut against the
+    // cold. The only warm thing left in the world is a seam of light.
+    x: 0.2,
+    z: 5.4,
+    eye: 1.6,
+    bearing: 8,
+    pitch: 4,
+    yawRange: 34,
+    pitchRange: 20,
+  },
+  {
+    id: "under-it",
+    index: 9,
+    t: 0.95,
+    label: "Under It",
+    // Open ground, well clear of the camp, and the sky is the whole frame.
+    // This is where a Mongolian actually meets the night — not through a hole
+    // in a roof.
+    x: -6.5,
+    z: 15.5,
+    eye: 1.62,
+    bearing: 214,
+    pitch: 44,
+    yawRange: 90,
+    pitchRange: 38,
   },
 ]
 
