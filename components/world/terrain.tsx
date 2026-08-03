@@ -111,8 +111,8 @@ function squarePerimeter(e: number, u: number): [number, number] {
 function buildSkirt(): THREE.BufferGeometry {
   const inner = TERRAIN_SIZE / 2
   const outer = SKIRT_SIZE / 2
-  const RINGS = 44
-  const PER_SIDE = 60
+  const RINGS = 104
+  const PER_SIDE = 84
   const COLS = PER_SIDE * 4
 
   const vertCount = (RINGS + 1) * (COLS + 1)
@@ -122,7 +122,7 @@ function buildSkirt(): THREE.BufferGeometry {
   const c = new THREE.Color()
 
   for (let j = 0; j <= RINGS; j++) {
-    const k = Math.pow(j / RINGS, 2.4)
+    const k = Math.pow(j / RINGS, 1.9)
     const e = inner + (outer - inner) * k
     for (let i = 0; i <= COLS; i++) {
       const [x, z] = squarePerimeter(e, (i % COLS) / COLS)

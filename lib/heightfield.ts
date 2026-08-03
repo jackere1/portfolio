@@ -69,6 +69,40 @@ function flattening(x: number, z: number): number {
   return 0.3 + 0.7 * smootherstep(k)
 }
 
+/** Ridged noise: folds the field at its midpoint so crests come to a line
+ *  rather than a dome. This is what makes a mountain read as a mountain. */
+function ridge(x: number, z: number): number {
+  return 1 - Math.abs(valueNoise(x, z) * 2 - 1)
+}
+
+/**
+ * The far ranges.
+ *
+ * A Mongolian basin is not an infinite plain — it is a wide floor with ranges
+ * standing around its rim, and those ridgelines receding in blue-haze steps are
+ * most of what the country looks like. They rise only beyond half a kilometre,
+ * so nothing near the camp is disturbed and the camera still grounds on the
+ * same gentle swells it always did.
+ */
+function mountains(x: number, z: number): number {
+  const d = Math.hypot(x, z)
+  if (d < 1200) return 0
+  const rise = smootherstep(Math.min(1, (d - 1200) / 2200))
+
+  // DISTANCE is what makes a range read as a range. A 400 m peak a kilometre
+  // away subtends 23 degrees and looks like a wall dropped behind the camp;
+  // the same peak at three kilometres subtends 5, which is what a real skyline
+  // does. Keep them low and keep them far.
+  //
+  // Only two octaves, and both long: the mesh out here is coarse, and any
+  // wavelength it cannot resolve turns the skyline into torn paper.
+  const a = ridge(x / 1500 + 5.1, z / 1500 - 2.7)
+  const b = ridge(x / 620 - 11.3, z / 620 + 7.9)
+
+  const shape = Math.pow(a, 1.6) * (0.7 + 0.3 * b)
+  return rise * shape * 260
+}
+
 function rawHeight(x: number, z: number): number {
   let h = 0
   const f = flattening(x, z)
@@ -82,7 +116,7 @@ function rawHeight(x: number, z: number): number {
     const amp = o.flattened ? o.amplitude * f : o.amplitude
     h += (n * 2 - 1) * amp
   }
-  return h
+  return h + mountains(x, z)
 }
 
 /** Raw height at the ger, subtracted everywhere so the ger floor is exactly 0. */

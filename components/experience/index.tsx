@@ -16,6 +16,8 @@ import { Terrain } from "@/components/world/terrain"
 import { Vegetation } from "@/components/world/grass"
 import { Ger } from "@/components/world/ger"
 import { Camp } from "@/components/world/camp"
+import { Interior } from "@/components/world/interior"
+import { Bankhar, Flock } from "@/components/world/animals"
 import { HOST_GER } from "@/lib/ger"
 import { Chrome } from "@/components/ui/chrome"
 
@@ -31,6 +33,9 @@ function Scene({ quality }: { quality: ReturnType<typeof useGpuTier>["quality"] 
       <Vegetation />
       <Ger params={HOST_GER} />
       <Camp />
+      <Interior />
+      <Flock />
+      <Bankhar />
       <PostProcessing quality={quality} />
       <Preload all />
     </>
@@ -89,7 +94,7 @@ export function Experience() {
             // the image is tone mapped twice.
             toneMapping: THREE.NoToneMapping,
           }}
-          camera={{ fov: 60, near: 0.1, far: 6000, position: [18, 2, -104] }}
+          camera={{ fov: 60, near: 0.1, far: 26000, position: [18, 2, -104] }}
           shadows={quality.shadows}
           onCreated={({ gl }) => {
             gl.outputColorSpace = THREE.SRGBColorSpace

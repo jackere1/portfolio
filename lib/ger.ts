@@ -60,6 +60,9 @@ export interface GerBuild {
   /** Door frame pieces and the two leaves. */
   doorFrame: THREE.Matrix4[]
   doorLeaf: THREE.Matrix4[]
+  doorWidth: number
+  doorHeight: number
+  doorZ: number
   /** Tension bands around the cover, and the stone-weighted roof ropes. */
   bands: { y: number; radius: number }[]
   ropeStones: THREE.Vector3[]
@@ -294,11 +297,11 @@ export function generateGer(params: GerParams): GerBuild {
   // The urkh (өрх): the square of felt that covers the crown. Folded back over
   // the north slope through the day to let the sun in, drawn across after dark.
   // Its corner ropes run down over the cover to the ground.
-  const urkhSize = toonoRadius * 2.45
+  const urkhSize = toonoRadius * 2.1
   // Folded back onto the NORTH roof slope, and actually sitting on it: the
   // roof drops (radius - r) * tan(pitch) from the crown, so anything placed at
   // the crown's height floats above the felt it is supposed to be lying on.
-  const urkhR = toonoRadius * 1.7
+  const urkhR = toonoRadius * 2.35
   const urkhFolded = new THREE.Vector3(
     0,
     wallHeight + (radius - urkhR) * Math.tan(pitch) + 0.035,
@@ -323,6 +326,9 @@ export function generateGer(params: GerParams): GerBuild {
     bagana,
     doorFrame,
     doorLeaf,
+    doorWidth: DOOR_WIDTH,
+    doorHeight: DOOR_HEIGHT,
+    doorZ: zFace,
     bands,
     ropeStones,
     chimney,

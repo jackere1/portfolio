@@ -85,7 +85,7 @@ export const NETTLE_RING = { center: 15, width: 12 } as const
  *  entirely by stepped blue-haze fog. */
 export const TERRAIN_SIZE = 320
 export const TERRAIN_SEGMENTS = 256
-export const SKIRT_SIZE = 2400
+export const SKIRT_SIZE = 9000
 
 /** Where the twin-rut track enters the world and where it dissolves into camp
  *  ground. No pavement, no signs, no paint — just ruts. */

@@ -109,6 +109,7 @@ export function Hearth({
   const crownRef = useRef<THREE.Mesh>(null)
   const seamRefs = useRef<THREE.Mesh[]>([])
   const smokeRef = useRef<THREE.ShaderMaterial>(null)
+  const fireDoorRef = useRef<THREE.Mesh>(null)
   const clock = useRef(0)
 
   const smokeUniforms = useMemo(
@@ -143,6 +144,10 @@ export function Hearth({
       const m = crownRef.current.material as THREE.MeshStandardMaterial
       m.emissiveIntensity = night * 1.05 * f
     }
+    if (fireDoorRef.current) {
+      const m = fireDoorRef.current.material as THREE.MeshStandardMaterial
+      m.emissiveIntensity = night * 2.4 * f
+    }
     for (const s of seamRefs.current) {
       if (!s) continue
       const m = s.material as THREE.MeshStandardMaterial
@@ -161,20 +166,58 @@ export function Hearth({
 
   return (
     <group position={position}>
-      {/* The stove itself, standing under the crown. */}
-      <mesh position={[0, 0.3, 0.22]} castShadow>
-        <cylinderGeometry args={[0.19, 0.21, 0.6, 12]} />
-        <meshStandardMaterial
-          color="#2e2c2a"
-          roughness={0.55}
-          metalness={0.6}
-        />
-      </mesh>
+      {/* The stove. A herder's stove is a rectangular sheet-metal box with a
+          fire door and a plate top, not a drum — and its pipe runs in ONE
+          piece from the back of it out through the crown collar. The pipe
+          crossing the opening is also why a look up through the toono was
+          never a clean disc of sky. */}
+      <group position={[0, 0, 0.18]}>
+        <mesh position={[0, 0.24, 0]} castShadow receiveShadow>
+          <boxGeometry args={[0.52, 0.42, 0.4]} />
+          <meshStandardMaterial
+            color="#2b2926"
+            roughness={0.52}
+            metalness={0.62}
+          />
+        </mesh>
+        {/* Plate top, with the pot rings. */}
+        <mesh position={[0, 0.462, 0]} castShadow>
+          <boxGeometry args={[0.58, 0.028, 0.46]} />
+          <meshStandardMaterial
+            color="#35322e"
+            roughness={0.44}
+            metalness={0.7}
+          />
+        </mesh>
+        {/* The fire door, facing the way in. */}
+        <mesh ref={fireDoorRef} position={[0, 0.2, 0.203]}>
+          <boxGeometry args={[0.26, 0.18, 0.008]} />
+          <meshStandardMaterial
+            color="#000000"
+            emissive="#ff7a1e"
+            emissiveIntensity={0}
+          />
+        </mesh>
+        {/* One continuous pipe, box to crown. */}
+        <mesh
+          position={[0, (toonoY + 0.55) / 2 + 0.24, -0.16]}
+          castShadow
+        >
+          <cylinderGeometry
+            args={[0.052, 0.058, toonoY + 0.55 - 0.24, 10]}
+          />
+          <meshStandardMaterial
+            color="#3b3a38"
+            roughness={0.6}
+            metalness={0.55}
+          />
+        </mesh>
+      </group>
 
       {/* One warm source. It is the only light in the world after stop 05. */}
       <pointLight
         ref={lightRef}
-        position={[0, 0.55, 0.22]}
+        position={[0, 0.42, 0.2]}
         color="#ff9a3c"
         distance={9}
         decay={2}

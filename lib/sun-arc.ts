@@ -279,13 +279,18 @@ const FOG_COLOR: readonly Key<Rgb>[] = [
   [1.0, rgb(0.013, 0.019, 0.048)],
 ]
 
+// Deliberately thin. The steppe's air is dry and very clear and you can see
+// ridgelines tens of kilometres out — that distance IS the landscape, and haze
+// heavy enough to hide it is not atmosphere, it is a grey curtain. Enough only
+// to separate the far ranges into blue-haze steps and to soften the horizon
+// once the light goes.
 const FOG_DENSITY: readonly Key<number>[] = [
-  [0.0, 0.0016],
-  [0.41, 0.0022],
-  [0.517, 0.0028],
-  [0.664, 0.0042],
-  [0.82, 0.0062],
-  [1.0, 0.0075],
+  [0.0, 0.00055],
+  [0.41, 0.0008],
+  [0.517, 0.0008],
+  [0.664, 0.0014],
+  [0.82, 0.0022],
+  [1.0, 0.0028],
 ]
 
 /** A bright afternoon needs far less exposure than a dark night. */

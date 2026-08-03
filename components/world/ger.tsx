@@ -45,14 +45,12 @@ export function Ger({
   const spokeRef = useRef<THREE.InstancedMesh>(null)
   const baganaRef = useRef<THREE.InstancedMesh>(null)
   const frameRef = useRef<THREE.InstancedMesh>(null)
-  const leafRef = useRef<THREE.InstancedMesh>(null)
 
   useInstances(uniRef, build.uni)
   useInstances(khanaRef, build.khana)
   useInstances(spokeRef, build.toonoSpokes)
   useInstances(baganaRef, build.bagana)
   useInstances(frameRef, build.doorFrame)
-  useInstances(leafRef, build.doorLeaf)
 
   // Unit geometries — all shaping is in the instance matrices.
   const pole = useMemo(() => new THREE.CylinderGeometry(0.019, 0.028, 1, 6), [])
@@ -131,13 +129,7 @@ export function Ger({
       >
         <meshStandardMaterial color="#8f4f1c" roughness={0.78} metalness={0} />
       </instancedMesh>
-      <instancedMesh
-        ref={leafRef}
-        args={[box, undefined, build.doorLeaf.length]}
-        castShadow
-      >
-        <meshStandardMaterial color="#c06a1e" roughness={0.7} metalness={0} />
-      </instancedMesh>
+      <DoorLeaves build={build} />
 
       {/* --- the urkh: the felt over the crown ------------------------------ */}
       <Urkh build={build} />
@@ -173,22 +165,6 @@ export function Ger({
         chimneyTop={build.chimney.base.y + build.chimney.height}
       />
 
-      {/* --- the yandan: the stove's chimney, out through the crown --------- */}
-      <mesh
-        position={[
-          build.chimney.base.x,
-          build.chimney.base.y + build.chimney.height / 2,
-          build.chimney.base.z,
-        ]}
-        castShadow
-      >
-        <cylinderGeometry args={[0.055, 0.06, build.chimney.height, 10]} />
-        <meshStandardMaterial
-          color="#3b3a38"
-          roughness={0.62}
-          metalness={0.55}
-        />
-      </mesh>
     </group>
   )
 }
@@ -227,5 +203,52 @@ function Urkh({ build }: { build: ReturnType<typeof generateGer> }) {
         side={THREE.DoubleSide}
       />
     </mesh>
+  )
+}
+
+/**
+ * The door leaves, hinged.
+ *
+ * A summer ger very often stands with its wooden door hooked open and only the
+ * felt flap hanging — the door faces south, and the afternoon sun comes
+ * straight in. It is shut when the cold does. Both states are driven off the
+ * same sun elevation that draws the urkh and rolls the khayaa down, so the
+ * whole house closes as one thing while the guest is inside.
+ */
+function DoorLeaves({ build }: { build: ReturnType<typeof generateGer> }) {
+  const left = useRef<THREE.Group>(null)
+  const right = useRef<THREE.Group>(null)
+  const sun = useMemo(() => createSunState(), [])
+  const half = build.doorWidth / 2
+
+  useFrame(() => {
+    writeSunState(sun, journey.t)
+    // Shut is 0; a leaf swung back against the wall is about 105 degrees.
+    const open = (1 - sun.urkh) * 1.83
+    if (left.current) left.current.rotation.y = open
+    if (right.current) right.current.rotation.y = -open
+  })
+
+  return (
+    <group position={[0, build.doorHeight / 2 + 0.06, build.doorZ]}>
+      {[
+        { ref: left, hinge: -half },
+        { ref: right, hinge: half },
+      ].map((d, i) => (
+        <group key={i} position={[d.hinge, 0, 0]} ref={d.ref}>
+          <mesh
+            position={[(i === 0 ? 1 : -1) * half * 0.5, 0, 0.02]}
+            castShadow
+          >
+            <boxGeometry args={[half - 0.012, build.doorHeight - 0.12, 0.045]} />
+            <meshStandardMaterial
+              color="#c06a1e"
+              roughness={0.7}
+              metalness={0}
+            />
+          </mesh>
+        </group>
+      ))}
+    </group>
   )
 }
