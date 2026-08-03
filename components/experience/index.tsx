@@ -15,6 +15,7 @@ import { Sky } from "@/components/world/sky"
 import { Terrain } from "@/components/world/terrain"
 import { Vegetation } from "@/components/world/grass"
 import { Ger } from "@/components/world/ger"
+import { Camp } from "@/components/world/camp"
 import { HOST_GER } from "@/lib/ger"
 import { Chrome } from "@/components/ui/chrome"
 
@@ -29,6 +30,7 @@ function Scene({ quality }: { quality: ReturnType<typeof useGpuTier>["quality"] 
       </Suspense>
       <Vegetation />
       <Ger params={HOST_GER} />
+      <Camp />
       <PostProcessing quality={quality} />
       <Preload all />
     </>

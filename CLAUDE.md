@@ -96,6 +96,8 @@ expected to print **zero** errors — not "fewer". If it prints any, you added t
   hard plants, on its own density channel with its own stiffness.
 - `lib/ger.ts` + `components/world/ger.tsx` — the one ger generator and its renderer.
 - `components/world/hearth.tsx` — the fire, the door seams, the crown glow and the smoke.
+- `components/world/camp.tsx` — the working spine: argal stack, solar panel, jerrycans and
+  milk cans, the aaruul tray, the uyaa rail and saddle, and the khashaa corral.
 
 ### Chrome
 - `components/ui/toono-mark.tsx` — the mark and the dial, one geometry doing both jobs.
@@ -151,7 +153,12 @@ These each cost real time to find. They are not stylistic.
 13. **Density culling is per TUFT (`iClump`), never per blade.** Testing per blade shreds
     every clump into scattered single stalks, which destroys the tussocks entirely — a
     tussock's whole character is that it is a dense standing clump.
-14. **Nothing may fill the toono opening.** The crown glow is a RING at the rim. It was once
+14. **Ambient intensity is NOT where the light arc lives.** `SKY_COLOR` and `GROUND_COLOR`
+    already fall by more than an order of magnitude across the journey, so a small ambient
+    intensity on top dims everything twice and turns stops 03–05 into black silhouettes
+    with every prop invisible. The intensity RISES as the sun crosses the horizon, because
+    that is the moment the sky stops being a fill light and becomes the key light.
+15. **Nothing may fill the toono opening.** The crown glow is a RING at the rim. It was once
     a filled disc, which is a lid on the only hole the sky comes through, and stop 07 is
     that hole. The galactic plane in `sky.tsx` is also aimed so the band genuinely falls
     inside what the crown frames from the seat — check both if you move either.
@@ -221,8 +228,8 @@ gradient, tension bands, stone-weighted ropes and the south-facing painted door.
 emissive-above-1 door seams and crown, all riding a single clamped seeded flicker so the
 fire and everything it touches inhale together. Chimney smoke reads from stop 01.
 
-**Still missing:** the corral and flock, the bankhar, every prop on the east wall (jerrycans,
-milk cans, argal stack, solar panel, aaruul tray), the interior set, and all audio.
+**Still missing:** the flock and the bankhar, the interior set for stops 06–07, and all
+audio. The Milky Way is procedural and should be swapped for the NASA SVS star map.
 
 The full plan, including the v1 cut list and the phase order, is at
 `~/.claude/plans/lets-build-everything-from-golden-tide.md`.

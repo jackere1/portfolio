@@ -170,14 +170,23 @@ const GROUND_COLOR: readonly Key<Rgb>[] = [
   [1.0, rgb(0.03, 0.032, 0.042)],
 ]
 
+// Once the sun is down the SKY is the light source, and at civil twilight it is
+// still a substantial one — you can read outdoors at sun -3.
+//
+// The arc is carried by SKY_COLOR and GROUND_COLOR, which already fall by more
+// than an order of magnitude from surface to night. This intensity is a second
+// multiplier on top, so keeping it small as well dims everything twice and is
+// what turned stops 03 to 05 into black silhouettes with every prop invisible.
+// It rises as the sun crosses the horizon, because that is the moment the sky
+// stops being a fill light and becomes the key.
 const AMBIENT: readonly Key<number>[] = [
-  [0.0, 0.3],
-  [0.17, 0.25],
-  [0.31, 0.2],
-  [0.47, 0.15],
-  [0.62, 0.1],
-  [0.78, 0.062],
-  [1.0, 0.04],
+  [0.0, 0.5],
+  [0.17, 0.68],
+  [0.31, 0.8],
+  [0.47, 0.8],
+  [0.62, 0.62],
+  [0.78, 0.38],
+  [1.0, 0.25],
 ]
 
 /** Tracks the horizon the eye is actually looking at, which is why it swings

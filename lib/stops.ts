@@ -76,11 +76,14 @@ export const STOPS: readonly Stop[] = [
     index: 4,
     t: 0.47,
     label: "The East Wall",
-    x: 6.4,
-    z: -1.5,
-    eye: 1.55,
-    bearing: 257,
-    pitch: -2,
+    x: 5.9,
+    z: -1.2,
+    eye: 1.5,
+    bearing: 249,
+    // The spine passes at arm's length, which means looking DOWN at it. Held
+    // level, everything on the ground sat below the frame and the whole beat
+    // was a blank wall.
+    pitch: -13,
     yawRange: 22,
     pitchRange: 14,
   },
