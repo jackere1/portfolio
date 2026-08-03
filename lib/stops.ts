@@ -171,11 +171,16 @@ export const STOPS: readonly Stop[] = [
     // Open ground, well clear of the camp, and the sky is the whole frame.
     // This is where a Mongolian actually meets the night — not through a hole
     // in a roof.
-    x: -6.5,
-    z: 15.5,
+    // Placed by the sky rather than by taste. At this epoch the galactic core
+    // stands about 10 degrees up in the south-south-west and Cygnus rides near
+    // the zenith, so the band arcs up out of the SSW horizon. Standing NNE of
+    // the camp puts the sealed ger low in that same frame: a small amber shape
+    // with its crown covered, under the whole arc of the galaxy.
+    x: 8,
+    z: -20,
     eye: 1.62,
-    bearing: 214,
-    pitch: 44,
+    bearing: 198,
+    pitch: 26,
     yawRange: 90,
     pitchRange: 38,
   },

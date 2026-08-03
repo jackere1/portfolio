@@ -5,6 +5,7 @@ import { useFrame, useThree } from "@react-three/fiber"
 import * as THREE from "three"
 import { journey } from "@/hooks/use-journey"
 import { createSunState, writeSunState } from "@/lib/sun-arc"
+import { getStarMap, starMapRotation } from "@/lib/starmap"
 
 // The twilight dome.
 //
@@ -46,6 +47,8 @@ const FRAG = /* glsl */ `
   uniform float uStarOpacity;
   uniform vec3  uZenith;
   uniform vec3  uHorizon;
+  uniform sampler2D uStarMap;  // NASA SVS Deep Star Maps 2020, equatorial
+  uniform mat3  uStarRot;      // world -> equatorial, from latitude and LST
   uniform vec3  uSunDisc;   // absolute radiance of the disc, keyframed
   uniform float uHaze;      // vertical Mie optical depth
   uniform float uMieGain;   // aureole strength
@@ -83,32 +86,16 @@ const FRAG = /* glsl */ `
     );
   }
 
-  // A soft band of unresolved stars with a dark lane through it. Grey-white and
-  // structured — never the purple that gives away a fake sky.
-  float milkyWay(vec3 d) {
-    // The pole sits near the horizon toward the south-east, which puts the
-    // plane on a great circle running roughly NE to SW through the zenith —
-    // where it genuinely is from this latitude on an August evening, Cygnus
-    // near the top and the core low in the south-west. It is also, and not by
-    // accident, the half of the sky the toono frames from the seat at stop 07.
-    vec3 pole = normalize(vec3(0.70, 0.02, 0.71));
-    float lat = dot(d, pole);
-
-    // A smooth band rather than a thresholded one.
-    float band = exp(-lat * lat / 0.020);
-    // The Great Rift: the dust lane splitting the band lengthwise, offset from
-    // the centreline as the real one is.
-    float rift = 1.0 - 0.78 * exp(-pow((lat + 0.045) / 0.026, 2.0));
-
-    // Three octaves, then a contrast curve. The Milky Way is not a bar of
-    // light — it is granular, all star clouds and dust, and a smooth band
-    // reads as a searchlight pointed at the camera.
-    float clump = vnoise(d * 9.0) * 0.5 +
-                  vnoise(d * 23.0) * 0.3 +
-                  vnoise(d * 54.0) * 0.2;
-    clump = pow(clamp(clump, 0.0, 1.0), 2.0);
-
-    return band * rift * (0.18 + 1.05 * clump);
+  // The Milky Way now comes from the real map rather than from noise. A 1k
+  // equirectangular cannot resolve a point source, but it does not need to —
+  // it carries the BAND, which is diffuse, and the sharp stars below are drawn
+  // procedurally on top. That split plays to what each is actually good at.
+  vec3 starMap(vec3 d) {
+    vec3 e = uStarRot * d;
+    float dec = asin(clamp(e.y, -1.0, 1.0));
+    float ra  = atan(e.z, e.x);
+    vec2 uv = vec2(ra / 6.2831853 + 0.5, dec / 3.14159265 + 0.5);
+    return texture2D(uStarMap, uv).rgb;
   }
 
   float stars(vec3 d) {
@@ -209,7 +196,12 @@ const FRAG = /* glsl */ `
     // --- night ------------------------------------------------------------
     if (uStarOpacity > 0.001) {
       float above = smoothstep(-0.02, 0.10, h);
-      col += vec3(0.66, 0.68, 0.76) * milkyWay(d) * uStarOpacity * above * 0.15;
+      // The map is display-referred sRGB and joins radiance that has not been
+      // tone mapped yet, so it needs de-gamma-ing — but a full square crushes
+      // the band, which lives almost entirely in the dim values. 1.5 keeps its
+      // structure while still darkening the empty sky between the stars.
+      vec3 sky = starMap(d);
+      col += pow(sky, vec3(1.5)) * uStarOpacity * above * 7.5;
       col += vec3(0.80, 0.83, 0.92) * stars(d) * uStarOpacity * above;
     }
 
@@ -231,6 +223,8 @@ export function Sky() {
       uZenith: { value: new THREE.Color(0.06, 0.12, 0.3) },
       uHorizon: { value: new THREE.Color(0.5, 0.4, 0.34) },
       uSunDisc: { value: new THREE.Color(57, 34, 17) },
+      uStarMap: { value: getStarMap() },
+      uStarRot: { value: starMapRotation() },
       uHaze: { value: 0.115 },
       uMieGain: { value: 0.9 },
     }),

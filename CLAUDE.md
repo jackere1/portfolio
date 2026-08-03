@@ -247,8 +247,16 @@ gradient, tension bands, stone-weighted ropes and the south-facing painted door.
 emissive-above-1 door seams and crown, all riding a single clamped seeded flicker so the
 fire and everything it touches inhale together. Chimney smoke reads from stop 01.
 
-**Still missing:** the flock and the bankhar, the interior set for stops 06–07, and all
-audio. The Milky Way is procedural and should be swapped for the NASA SVS star map.
+The night sky is the **real** one: NASA/Goddard SVS *Deep Star Maps 2020*, in equatorial
+coordinates, rotated by the actual local sidereal time of the moment the scene depicts
+(`lib/starmap.ts`). It was chosen over the more obvious ESO Milky Way panorama precisely
+because that one is in *galactic* coordinates — rotating it until the band looks right is an
+aesthetic placement dressed up as an astronomical one, which this site cannot do. **Its
+attribution must ship**; see `public/sky/CREDITS.md`.
+
+**Still missing:** audio, the ovoo on the track, the зэл and the horses, human presence, and
+the departure gesture (a host casting milk with a tsatsal after a leaving guest — the correct
+closing beat, and one of the most beautiful in the culture).
 
 The full plan, including the v1 cut list and the phase order, is at
 `~/.claude/plans/lets-build-everything-from-golden-tide.md`.
