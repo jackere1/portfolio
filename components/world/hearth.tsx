@@ -110,6 +110,7 @@ export function Hearth({
   const seamRefs = useRef<THREE.Mesh[]>([])
   const smokeRef = useRef<THREE.ShaderMaterial>(null)
   const fireDoorRef = useRef<THREE.Mesh>(null)
+  const spillRef = useRef<THREE.PointLight>(null)
   const clock = useRef(0)
 
   const smokeUniforms = useMemo(
@@ -144,6 +145,7 @@ export function Hearth({
       const m = crownRef.current.material as THREE.MeshStandardMaterial
       m.emissiveIntensity = night * 1.05 * f
     }
+    if (spillRef.current) spillRef.current.intensity = night * 1.5 * f
     if (fireDoorRef.current) {
       const m = fireDoorRef.current.material as THREE.MeshStandardMaterial
       m.emissiveIntensity = night * 2.4 * f
@@ -151,7 +153,7 @@ export function Hearth({
     for (const s of seamRefs.current) {
       if (!s) continue
       const m = s.material as THREE.MeshStandardMaterial
-      m.emissiveIntensity = night * 1.9 * f
+      m.emissiveIntensity = night * 3.6 * f
     }
     if (smokeRef.current) {
       smokeRef.current.uniforms.uTime.value = clock.current
@@ -213,6 +215,18 @@ export function Hearth({
           />
         </mesh>
       </group>
+
+      {/* The spill. A shut ger is not a dark one — light gets under the door
+          and through the felt joins, and from twenty metres out in the dark
+          that faint warm pool is the entire visible fact of the household. */}
+      <pointLight
+        ref={spillRef}
+        position={[0, 0.18, 3.0]}
+        color="#ff9a44"
+        distance={7}
+        decay={2}
+        intensity={0}
+      />
 
       {/* One warm source. It is the only light in the world after stop 05. */}
       <pointLight

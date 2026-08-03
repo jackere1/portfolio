@@ -18,6 +18,8 @@ import { Ger } from "@/components/world/ger"
 import { Camp } from "@/components/world/camp"
 import { Interior } from "@/components/world/interior"
 import { Bankhar, Flock } from "@/components/world/animals"
+import { Host } from "@/components/world/people"
+import { Ovoo } from "@/components/world/ovoo"
 import { HOST_GER } from "@/lib/ger"
 import { Chrome } from "@/components/ui/chrome"
 
@@ -36,6 +38,8 @@ function Scene({ quality }: { quality: ReturnType<typeof useGpuTier>["quality"] 
       <Interior />
       <Flock />
       <Bankhar />
+      <Host />
+      <Ovoo />
       <PostProcessing quality={quality} />
       <Preload all />
     </>

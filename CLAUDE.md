@@ -254,9 +254,20 @@ because that one is in *galactic* coordinates — rotating it until the band loo
 aesthetic placement dressed up as an astronomical one, which this site cannot do. **Its
 attribution must ship**; see `public/sky/CREDITS.md`.
 
-**Still missing:** audio, the ovoo on the track, the зэл and the horses, human presence, and
-the departure gesture (a host casting milk with a tsatsal after a leaving guest — the correct
-closing beat, and one of the most beautiful in the culture).
+**The host** (`components/world/people.tsx`) appears twice, and both are the culture's own
+grammar. On arrival, someone steps out of the door — that is the permission, because you call
+*нохой хор*, hold the dog, and you WAIT; you do not approach until the household receives
+you. On departure, they stand at the door and cast milk into the air after you with a tsatsal,
+"pouring out a white road ahead". The last thing the visitor gets is not their own gaze, it is
+a blessing thrown at their back. They stay a **silhouette** at distance — a bad human reads far
+worse than none.
+
+**The ovoo** (`components/world/ovoo.tsx`) stands on a rise west-south-west of the camp. Its
+khadag are the only blue in this world besides the sky, and that is the whole cool-colour
+budget spent in one place.
+
+**Still missing:** audio, the зэл (the foal tether line that says late summer), the horses,
+and the arrival HOLD — the scroll should refuse to advance until the host comes out.
 
 The full plan, including the v1 cut list and the phase order, is at
 `~/.claude/plans/lets-build-everything-from-golden-tide.md`.
