@@ -32,7 +32,10 @@ export function Interior() {
 
   // Floor: boards under a felt, not the terrain plane showing through.
   const floor = useMemo(() => {
-    const g = new THREE.CircleGeometry(GER_RADIUS - 0.06, 40)
+    // Runs slightly PAST the wall line so it tucks under the khana rather than
+    // stopping short of it — a six-centimetre gap between floor and wall shows
+    // bare ground through the join all the way round the room.
+    const g = new THREE.CircleGeometry(GER_RADIUS + 0.04, 48)
     g.rotateX(-Math.PI / 2)
     return g
   }, [])
