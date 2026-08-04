@@ -271,6 +271,27 @@ These each cost real time to find. They are not stylistic.
       (88°→40°, under the crown's 52°) that is keyed to `starOpacity` and applies ONLY inside
       the footprint, so stop 07's last-blue crown stays completely free and the ceiling closes
       exactly as the stars arrive — which is when a household draws the felt across anyway.
+26. **WebGL context loss is a MOBILE code path, and all three parts of the recovery are
+    load-bearing.** An Android tab switch routinely takes the context away; before phones
+    reached the 3D tier this was unreachable, and it went straight from unreachable to common.
+    - `preventDefault()` on `webglcontextlost` is MANDATORY. Without it the browser never even
+      attempts a restore, `webglcontextrestored` never fires, and the canvas is black for the
+      rest of the page's life.
+    - **The listeners must be registered inside the canvas with a teardown, never in
+      `onCreated`.** `onCreated` has no cleanup, and when a restored context triggers a remount
+      the DISCARDED canvas fires `webglcontextlost` a second time on its way out — a listener
+      that outlived it flips the overlay back on over the perfectly good new canvas, which is
+      indistinguishable from a failed recovery. `ContextGuard` exists for exactly this.
+    - **The `<Canvas>` element must be MEMOISED.** Toggling the overlay is a state change on
+      the component that renders the canvas, and without the memo that re-renders the whole R3F
+      tree — including the composer — *while the GL context is dead*.
+      `@react-three/postprocessing` then throws "Converting circular structure to JSON" out of
+      its effect memoisation (note 9 again, from the other direction) and React unwinds the app
+      to "Application error". That is far worse than the black canvas the handler was written
+      to fix, and it is only reachable while the context is gone — so it will not show up in
+      any test that does not actually kill the context.
+    Kill it with `WEBGL_lose_context` and cycle it TWICE; once passes even when the teardown
+    is missing.
 
 ---
 
