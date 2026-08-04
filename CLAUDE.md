@@ -167,21 +167,26 @@ These each cost real time to find. They are not stylistic.
     intensity on top dims everything twice and turns stops 03–05 into black silhouettes
     with every prop invisible. The intensity RISES as the sun crosses the horizon, because
     that is the moment the sky stops being a fill light and becomes the key light.
-15. **The cloud deck is projected onto a flat ceiling, not raymarched.** At this scale the
+15. **The cloud field is defined ONCE, in `lib/clouds.ts`.** The sky draws the deck and the
+    ground is shadowed by it, and if those two ever sample different fields the shadows fall
+    in the wrong places — which is worse than no shadows, because the eye reads a cloud and
+    then reads a shadow that does not belong to it. A view ray's `xz/y` IS the deck coordinate,
+    which is why neither side has to know about the other.
+16. **The cloud deck is projected onto a flat ceiling, not raymarched.** At this scale the
     difference is invisible and the cost is one fbm instead of a loop. Two things make it read:
     the deck must CONVERGE at the horizon, which is what a ceiling over a huge plain looks
     like, and it must carry THICKNESS — bright where it is deep, dark and translucent where it
     thins — because presence alone is grey paint. Watch the projection scale: too small a
     factor and the entire visible sky samples one value of the field, so there is no cloud,
     only a switch between overcast and nothing.
-16. **Golden hour's colour is in the HEMISPHERE light, not the sun.** At +3 degrees a flat
+17. **Golden hour's colour is in the HEMISPHERE light, not the sun.** At +3 degrees a flat
     ground receives almost nothing from a direct sun and diffuse sky genuinely dominates —
     which is correct physics and looked stone cold until `SKY_COLOR` itself went warm there.
-17. **The crown is the SUN and its wood is red-orange, never blue.** Mongolian ger woodwork is
+18. **The crown is the SUN and its wood is red-orange, never blue.** Mongolian ger woodwork is
     red and reddish-yellow; the toono in particular is coloured for the sun, with the uni as
     its rays. It should be the warmest wood in the ger. (An earlier version painted the spokes
     khadag blue, which inverted the symbolism.)
-18. **The ger opens and closes across the day, and all three parts must actually be wired.**
+19. **The ger opens and closes across the day, and all three parts must actually be wired.**
     The urkh is folded back over the north roof slope by day and drawn across the crown after
     dark; the khayaa (the wall skirt) is rolled UP through the heat — which is why the orange
     lattice shows at the base all afternoon — and rolled DOWN when the cold comes; the door
@@ -190,9 +195,9 @@ These each cost real time to find. They are not stylistic.
     and stop 08 walks back out into that. **Watch for half-wired versions of this**: the
     khayaa value existed in the sun state and in this file for a while before anything in the
     ger actually read it, so the brief claimed a seal the render never performed.
-19. **The bagana stand ON the toono ring** (x = ±`toonoRadius`), not inside it. And you must
+20. **The bagana stand ON the toono ring** (x = ±`toonoRadius`), not inside it. And you must
     never walk between them — the interior camera path passes outside the west one.
-20. **Nothing may fill the toono opening.** The crown glow is a RING at the rim. It was once
+21. **Nothing may fill the toono opening.** The crown glow is a RING at the rim. It was once
     a filled disc, which is a lid on the only hole the sky comes through, and stop 07 is
     that hole. The galactic plane in `sky.tsx` is also aimed so the band genuinely falls
     inside what the crown frames from the seat — check both if you move either.
@@ -262,7 +267,8 @@ land has no seam; the sky never bands; 390px width gets the flat tier; zero cons
 Measured on the PRODUCTION build, 2026-08-03, Intel Meteor Lake integrated graphics, 1440x900
 at DPR 1, headless Chromium.
 
-**The scene's own render costs about 1.0 ms per frame** — `gl.render(scene, camera)` in a tight
+**The scene's own render costs 0.7–1.6 ms per frame** (measured again after the cloud deck and
+cloud shadows went in, which cost nothing detectable) — `gl.render(scene, camera)` in a tight
 loop followed by `gl.finish()`, so GPU completion is included. (That path bypasses the
 postprocessing composer, which R3F drives itself, so the composer's bloom/AgX/grain passes are
 on top of that and are not yet separately measured.)

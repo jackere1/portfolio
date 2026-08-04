@@ -14,6 +14,12 @@ import {
   MAP_RES,
   TERRAIN_MAP_GLSL,
 } from "@/lib/terrain-maps"
+import {
+  CLOUD_DECK_HEIGHT,
+  CLOUD_GLSL,
+  CLOUD_SHADOW_GLSL,
+  CLOUD_SHADOW_STRENGTH,
+} from "@/lib/clouds"
 
 // The field.
 //
@@ -197,6 +203,9 @@ const FRAG = /* glsl */ `
   uniform vec3  uCamPos;
   uniform float uSpecies;   // 0 = grass, 1 = hard plants
 
+  ${CLOUD_GLSL}
+  ${CLOUD_SHADOW_GLSL}
+
   void main() {
     vec3 V = normalize(uCamPos - vWorld);
     vec3 L = normalize(uSunDir);
@@ -229,8 +238,11 @@ const FRAG = /* glsl */ `
     }
 
     // --- direct -----------------------------------------------------------
+    // Shadowed by the same cloud field the ground is, or the sward lights up
+    // in a patch of shade and the two come apart.
+    float cloud = cloudShadowAt(vWorld);
     float ndl = max(dot(N, L), 0.0);
-    vec3 lit = base * uSunColor * uSunIntensity * ndl;
+    vec3 lit = base * uSunColor * uSunIntensity * ndl * cloud;
 
     // --- THE TERM ---------------------------------------------------------
     // Light coming through the blade from behind. Masked to the upper blade,
@@ -244,7 +256,7 @@ const FRAG = /* glsl */ `
     // Grazing incidence along the blade: a leaf edge-on transmits far more.
     float edge = 1.0 - abs(dot(N, V));
     vec3 through = vec3(0.95, 0.60, 0.20) * back * thin *
-                   (0.45 + 0.55 * edge) * uSunIntensity * 0.30;
+                   (0.45 + 0.55 * edge) * uSunIntensity * 0.30 * cloud;
 
     // --- ambient ----------------------------------------------------------
     // Hemisphere, plus a root-darkening gradient standing in for the occlusion
@@ -396,6 +408,11 @@ function GrassTile({
       uAmbient: { value: 0.3 },
       uFogColor: { value: new THREE.Color(0.3, 0.25, 0.21) },
       uFogDensity: { value: 0.0022 },
+      uCloudCover: { value: 0.44 },
+      uCloudTime: { value: 0 },
+      uCloudSunDir: { value: new THREE.Vector3(0, 0.4, -1) },
+      uCloudDeckH: { value: CLOUD_DECK_HEIGHT },
+      uCloudShadow: { value: CLOUD_SHADOW_STRENGTH },
     }),
     [tileHalf, fade, species, stiffness]
   )
@@ -422,6 +439,9 @@ function GrassTile({
     u.uAmbient.value = sun.ambientIntensity
     u.uFogColor.value.setRGB(sun.fogColor.r, sun.fogColor.g, sun.fogColor.b)
     u.uFogDensity.value = sun.fogDensity
+    u.uCloudCover.value = sun.cloudCover
+    u.uCloudTime.value = u.uTime.value
+    u.uCloudSunDir.value.set(sun.dirX, sun.dirY, sun.dirZ)
   })
 
   return (

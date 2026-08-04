@@ -7,6 +7,7 @@ import { journey } from "@/hooks/use-journey"
 import { createSunState, writeSunState } from "@/lib/sun-arc"
 import { useReducedMotion } from "@/hooks/use-reduced-motion"
 import { getStarMap, starMapRotation } from "@/lib/starmap"
+import { CLOUD_GLSL } from "@/lib/clouds"
 
 // The twilight dome.
 //
@@ -53,10 +54,9 @@ const FRAG = /* glsl */ `
   uniform vec3  uSunDisc;   // absolute radiance of the disc, keyframed
   uniform float uHaze;      // vertical Mie optical depth
   uniform float uMieGain;   // aureole strength
-  uniform float uCloudCover;
   uniform vec3  uCloudLit;
   uniform vec3  uCloudDark;
-  uniform float uCloudTime;
+  ${CLOUD_GLSL}
 
   // Vertical Rayleigh optical depth for an observer at ~1400 m. The steppe
   // sits high, which is exactly why its zenith is deeper than a sea-level one.
@@ -91,35 +91,8 @@ const FRAG = /* glsl */ `
     );
   }
 
-  // --- the cloud deck ------------------------------------------------------
-  float hash12(vec2 p) {
-    vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-    p3 += dot(p3, p3.yzx + 33.33);
-    return fract((p3.x + p3.y) * p3.z);
-  }
-
-  float vnoise2(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    return mix(
-      mix(hash12(i), hash12(i + vec2(1.0, 0.0)), f.x),
-      mix(hash12(i + vec2(0.0, 1.0)), hash12(i + vec2(1.0, 1.0)), f.x),
-      f.y
-    );
-  }
-
-  float fbm2(vec2 p) {
-    float v = 0.0;
-    float a = 0.5;
-    for (int i = 0; i < 5; i++) {
-      v += a * vnoise2(p);
-      p = p * 2.03 + vec2(17.3, -9.1);
-      a *= 0.5;
-    }
-    return v;
-  }
-
+  // The cloud field lives in lib/clouds.ts and is shared verbatim with the
+  // ground, so a shadow can never belong to a cloud that is not there.
   // The Milky Way now comes from the real map rather than from noise. A 1k
   // equirectangular cannot resolve a point source, but it does not need to —
   // it carries the BAND, which is diffuse, and the sharp stars below are drawn
@@ -225,19 +198,10 @@ const FRAG = /* glsl */ `
       // cloud is against that ceiling. Too small a factor and the whole
       // visible sky samples one value of the field, which is either total
       // overcast or nothing at all — there is no cloud, only a switch.
+      // Same field the ground is shadowed by; a view ray's xz/y IS the deck
+      // coordinate, which is why neither side needs to know about the other.
       vec2 deck = d.xz / max(h, 0.015);
-      vec2 cp = deck * 2.1 + uCloudTime * vec2(0.016, 0.007);
-
-      float n = fbm2(cp);
-      // A second, much finer octave breaks the edges up. Without it the field
-      // is all soft blobs and the deck reads as painted fog.
-      n += (fbm2(cp * 4.3) - 0.5) * 0.16;
-
-      float edge = 1.0 - uCloudCover;
-      // THICKNESS, not just presence. A cumulus is bright where it is deep and
-      // dark and translucent where it thins to nothing, and carrying that one
-      // extra number is most of the difference between cloud and grey paint.
-      float thick = clamp((n - edge) / 0.30, 0.0, 1.0);
+      float thick = cloudThickness(deck);
       float cov = smoothstep(0.0, 0.20, thick);
 
       // Thin toward the horizon: perspective piles the deck up there, and the

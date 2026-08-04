@@ -1,10 +1,20 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useRef } from "react"
+import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import { usePbrMaterial } from "@/lib/textures"
 import { heightAt, slopeAt } from "@/lib/heightfield"
 import { rutDistance } from "@/lib/terrain-maps"
+import { journey } from "@/hooks/use-journey"
+import { createSunState, writeSunState } from "@/lib/sun-arc"
+import { useReducedMotion } from "@/hooks/use-reduced-motion"
+import {
+  CLOUD_DECK_HEIGHT,
+  CLOUD_GLSL,
+  CLOUD_SHADOW_GLSL,
+  CLOUD_SHADOW_STRENGTH,
+} from "@/lib/clouds"
 import {
   BUUTS,
   SKIRT_SIZE,
@@ -172,20 +182,67 @@ export function Terrain() {
   const skirt = useMemo(buildSkirt, [])
   // repeat is 1: the UVs above are already in world tiles.
   const pbr = usePbrMaterial("steppe-grass", { repeat: [1, 1], anisotropy: 8 })
+  const sun = useMemo(() => createSunState(), [])
+  const reduced = useReducedMotion()
+  const clock = useRef(0)
 
   // Deliberately NO roughness map and roughness pinned at 1. Dry steppe soil
   // and dead grass have no specular lobe worth the name, and the moment the
   // ground picks up a sun glitter it stops being ground and starts being a lake.
-  const material = useMemo(
-    () =>
-      new THREE.MeshStandardMaterial({
-        vertexColors: true,
-        roughness: 1,
-        metalness: 0,
-        dithering: true,
-      }),
+  const cloudUniforms = useMemo(
+    () => ({
+      uCloudCover: { value: 0.44 },
+      uCloudTime: { value: 0 },
+      uCloudSunDir: { value: new THREE.Vector3(0, 0.4, -1) },
+      uCloudDeckH: { value: CLOUD_DECK_HEIGHT },
+      uCloudShadow: { value: CLOUD_SHADOW_STRENGTH },
+    }),
     []
   )
+
+  const material = useMemo(() => {
+    const m = new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      roughness: 1,
+      metalness: 0,
+      dithering: true,
+    })
+    // Cloud shadows. Kilometre-long shadows crawling across the hills is one of
+    // the defining looks of this landscape, and a lit deck with no shadow under
+    // it reads as a painted backdrop rather than as weather.
+    m.onBeforeCompile = (shader) => {
+      Object.assign(shader.uniforms, cloudUniforms)
+      shader.vertexShader = shader.vertexShader
+        .replace(
+          "#include <common>",
+          "#include <common>\nvarying vec3 vCloudWorld;"
+        )
+        .replace(
+          "#include <worldpos_vertex>",
+          "#include <worldpos_vertex>\n  vCloudWorld = (modelMatrix * vec4(position, 1.0)).xyz;"
+        )
+      shader.fragmentShader = shader.fragmentShader
+        .replace(
+          "#include <common>",
+          "#include <common>\nvarying vec3 vCloudWorld;\n" +
+            CLOUD_GLSL +
+            CLOUD_SHADOW_GLSL
+        )
+        .replace(
+          "#include <opaque_fragment>",
+          "outgoingLight *= cloudShadowAt(vCloudWorld);\n#include <opaque_fragment>"
+        )
+    }
+    return m
+  }, [cloudUniforms])
+
+  useFrame((_, delta) => {
+    writeSunState(sun, journey.t)
+    if (!reduced) clock.current += Math.min(delta, 1 / 20)
+    cloudUniforms.uCloudTime.value = clock.current
+    cloudUniforms.uCloudCover.value = sun.cloudCover
+    cloudUniforms.uCloudSunDir.value.set(sun.dirX, sun.dirY, sun.dirZ)
+  })
 
   useMemo(() => {
     material.map = pbr.map ?? null
