@@ -245,6 +245,32 @@ These each cost real time to find. They are not stylistic.
     "verified" the mobile tier happened to expose the extension, so the failing branch was
     never once exercised. **Stub the capability away and re-run before believing any tier
     decision.** `?tier=` and `?diag=1` exist for exactly this.
+25. **`gamma` is the handset's ROLL and `alpha` is the heading — do not swap them.** The first
+    gyro camera read `beta`/`gamma` and never read `alpha` at all, so "look left" was a
+    steering-wheel twist of the handset and physically turning your body did NOTHING. Measured:
+    rotating the phone through a full 180° moved the camera by exactly 0°, while a 40° roll
+    swung it 27°. The rig now builds the canonical device quaternion —
+    `Euler(beta, alpha, -gamma, "YXZ")`, post-multiplied by a −90° X flip (a camera looks out
+    of the handset's BACK, the sensor frame out of its screen), then by the screen angle — and
+    decomposes it as YXZ. Four things that each cost real time:
+    - **`window.orientation` is gone from Chrome on Android, and its sign is INVERTED from the
+      replacement**: it reports −90 where `screen.orientation.angle` reports 270. A naive swap
+      silently reverses landscape. `(legacy + 360) % 360` makes them agree.
+    - **The zenith is a gimbal singularity**, and it is not hypothetical — it is stop 09, whose
+      whole subject is overhead. Above 78° of device pitch the yaw accumulator FREEZES, or the
+      heading spins wildly for a rotation the visitor never performed.
+    - **Roll is deliberately zeroed, which is a knowing divergence from A-Frame.** A-Frame 0.8.2
+      zeroed it, 1.0.4+ passes it through, and for a headset pass-through is right. This is a
+      hand-held phone under a screen-space chrome layer: a rolling world either tilts the
+      horizon under level instruments or forces the mark to counter-rotate, and **the mark is
+      not allowed to rotate**. There is no third option.
+    - **Free look must not re-open the toono taboo.** The camera is still inside the ger at
+      t≈0.745–0.775 while `starOpacity` has already lifted off zero and the urkh is only ~46%
+      drawn, so an unclamped look up would show stars through an uncovered crown — the poverty
+      omen the whole nine-stop route was restructured to avoid. The rig drops a pitch ceiling
+      (88°→40°, under the crown's 52°) that is keyed to `starOpacity` and applies ONLY inside
+      the footprint, so stop 07's last-blue crown stays completely free and the ceiling closes
+      exactly as the stars arrive — which is when a household draws the felt across anyway.
 
 ---
 
@@ -257,13 +283,23 @@ These each cost real time to find. They are not stylistic.
 - **Zero re-renders while travelling, zero allocation in `useFrame`.** Mutate through refs
   and preallocated objects.
 - **Two speeds.** The world is damped and soft; pointer and keyboard responses are instant.
-- **Phones get the same world, simplified — and the gyro IS the pointer.** Device orientation
-  feeds the same clamped, eased free-look layer, so every guarantee holds: scroll still moves
-  the authored pose and nothing else, the offset is still bounded by the stop's own ranges, and
-  the horizon still cannot roll. The FIRST reading becomes the neutral, because people hold a
-  phone at whatever angle they hold it and treating raw beta as absolute pitch starts most
-  visitors staring at the ground. iOS gates the sensor behind a gesture, so the permission is
-  requested from the entry click — the same click already spending itself on the AudioContext.
+- **Phones get the same world, simplified — and the phone is a WINDOW, not a slider.** Device
+  orientation drives the camera's orientation directly, 1:1: turn 90° and the view turns 90°,
+  raise the phone and you look up. Scroll still moves the authored pose and nothing else.
+  The gyro does NOT feed the pointer's clamped ±yawRange offset — an earlier version did that
+  and it failed the way a phone owner notices in one second (see note 25).
+  - **Yaw is a relative ACCUMULATOR; pitch is measured against a neutral.** Android's
+    `deviceorientation` is gyro-backed (GAME_ROTATION_VECTOR), so it needs no magnetometer and
+    nothing magnetic can bend it — but its `alpha` origin is arbitrary and drifts, which makes
+    it useless as a heading and perfect as a rate. Integrating deltas makes that a non-issue.
+    Pitch needs a neutral because a hand-held phone is not a headset: people hold one at
+    50–70° of beta, and absolute pitch (what A-Frame does) starts visitors staring at dirt.
+  - **Travelling walks the neutral back to the authored frame.** Only while the scroll is
+    already moving the world — so a visitor who turned right around is re-aimed by moving on
+    and can never be stranded facing empty steppe, and it is never motion nobody asked for.
+  - iOS gates the sensor behind a gesture, so permission is requested from the entry click —
+    the same click already spending itself on the AudioContext. `requestPermission` is no
+    longer an iOS tell: Chrome shipped it on desktop and Android too.
 - **`camera.fov` is VERTICAL, which portrait punishes.** At 390x844 a 60° vertical lens leaves
   about 30° horizontally and an enormous landscape reads as a keyhole. `fovForAspect` widens
   the vertical lens on tall viewports, capped at 78° where edge distortion starts costing more
@@ -274,8 +310,10 @@ These each cost real time to find. They are not stylistic.
   96% across the threshold, and the fire and room beds key off the SAME number. Leaving the
   outdoor beds at full level inside is the audio equivalent of leaving the walls off, and it
   kills the one-second flip at the door, which is the best beat in the piece.
-- **The camera moves only while the user scrolls.** Constant FOV, zero roll, stable horizon.
-  That is the whole anti-nausea contract.
+- **The camera's POSITION moves only while the user scrolls.** Constant FOV, zero roll, stable
+  horizon. That is the anti-nausea contract, and free look never touches position — on a phone
+  the visitor's own hand owns the orientation, which is motion they are physically performing
+  and therefore the one kind that cannot induce sickness.
 - **Authenticity is not decoration.** The solar panel, dish, motorcycle and dung stack stay
   in frame — 70–90% of herder households have them, and omitting them is the romanticizing-
   tourist error. Grass is gold and khaki, never green. All doors face south. Uni poles are

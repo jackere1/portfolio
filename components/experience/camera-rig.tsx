@@ -7,6 +7,7 @@ import { journey } from "@/hooks/use-journey"
 import { STOPS, type Stop } from "@/lib/stops"
 import { heightAt } from "@/lib/heightfield"
 import { GER_RADIUS } from "@/lib/world"
+import { createSunState, writeSunState } from "@/lib/sun-arc"
 import { useReducedMotion } from "@/hooks/use-reduced-motion"
 
 // Two layers, always.
@@ -22,21 +23,70 @@ import { useReducedMotion } from "@/hooks/use-reduced-motion"
 const pointer = { x: 0, y: 0, active: false, idle: 0 }
 
 /**
- * Device orientation, normalised the same way the pointer is.
+ * Device orientation — a MAGIC WINDOW, not a tilt slider.
  *
- * On a phone the gyro IS the pointer: it feeds the same clamped, eased offset
- * layer, so every guarantee the rig makes still holds — the authored pose is
- * still the only thing scroll moves, the offset is still bounded by the stop's
- * own yaw and pitch ranges, and the horizon still cannot roll.
+ * The first version of this treated the handset like a mouse: it read `beta`
+ * and `gamma` and drove the same clamped ±yawRange offset the pointer drives.
+ * That fails in the way a phone owner notices immediately. `gamma` is the
+ * handset's ROLL, so "look left" became a steering-wheel gesture; `alpha` was
+ * never read at all, so physically turning your body did nothing; and the whole
+ * thing was scaled into a ~20 degree allowance, so 50 degrees of real rotation
+ * bought about 13 degrees of view. It was measurable: turning the phone through
+ * a full 180 degrees moved the camera by exactly zero.
  *
- * The first reading becomes the neutral. People hold a phone at whatever angle
- * they hold it, and treating raw beta as an absolute pitch would start most
- * visitors staring at the ground.
+ * So the sensor now drives the camera's ORIENTATION directly, through the
+ * canonical device-orientation quaternion, and the numbers below are angles in
+ * RADIANS in three's own frame rather than normalised nudges.
+ *
+ * `yaw` is a RELATIVE accumulator and `pitch` is measured against a neutral
+ * captured on the first reading. Both are deliberate:
+ *
+ *  - Android's `deviceorientation` is backed by the GAME_ROTATION_VECTOR, which
+ *    does not use the magnetometer and so is not distorted by whatever steel is
+ *    in the room. Its `alpha` origin is therefore arbitrary and drifts, which
+ *    makes it useless as a heading and perfect as a relative rate. Accumulating
+ *    deltas is what makes that arbitrariness a non-issue.
+ *  - A hand-held phone is not a headset. People hold one at 50–70 degrees of
+ *    beta, and a phone held upright reads as the horizon, so treating pitch as
+ *    absolute (which is what A-Frame does) starts most visitors staring 30
+ *    degrees into the dirt. The neutral is what buys the authored composition.
  */
-const tilt = { x: 0, y: 0, active: false, baseBeta: 0, baseGamma: 0, has: false }
+const tilt = {
+  active: false,
+  /** Accumulated yaw since the first reading, radians, + is turning left. */
+  yaw: 0,
+  /** Current device pitch, radians, and the neutral it is measured against. */
+  pitch: 0,
+  basePitch: 0,
+  has: false,
+  hasYaw: false,
+  lastDevYaw: 0,
+  /** Which event won. Relative is preferred; absolute is the fallback for
+   *  handsets that only ever fire that one. */
+  source: "" as "" | "deviceorientation" | "deviceorientationabsolute",
+}
 
-/** iOS 13+ gates DeviceOrientationEvent behind a user gesture. Called from the
- *  entry click, which is already being spent on the AudioContext. */
+/**
+ * Where the YXZ decomposition stops being trustworthy.
+ *
+ * Pointing a phone at the zenith is the gimbal singularity: yaw and roll become
+ * the same axis and the split between them is arbitrary, so the accumulated
+ * heading can spin wildly for a rotation the user did not perform. Straight up
+ * is not a hypothetical here — it is stop 09, where the whole subject is the
+ * Milky Way overhead. Above this the heading simply holds.
+ */
+const YAW_RELIABLE_PITCH = (78 * Math.PI) / 180
+
+/**
+ * iOS 13+ gates DeviceOrientationEvent behind a user gesture. Called from the
+ * entry click, which is already being spent on the AudioContext.
+ *
+ * NOTE: `requestPermission` is no longer an iOS tell — Chrome shipped it on
+ * desktop and Android in the 151/152 window. Chrome's sensor permission still
+ * defaults to allow, so this resolves "granted" without a prompt and returns
+ * "denied" only when the user has actually turned motion sensors off, which is
+ * the answer we want either way.
+ */
 export async function requestTiltPermission(): Promise<boolean> {
   const DOE = (
     window as unknown as {
@@ -57,6 +107,62 @@ export async function requestTiltPermission(): Promise<boolean> {
 function smootherstep(k: number): number {
   const c = Math.max(0, Math.min(1, k))
   return c * c * c * (c * (c * 6 - 15) + 10)
+}
+
+const DEG = Math.PI / 180
+
+// --- the canonical device-orientation quaternion -----------------------------
+// Preallocated: this runs on every sensor reading and every frame.
+const zAxis = new THREE.Vector3(0, 0, 1)
+/** -90 degrees about X. The sensor frame has +Z out of the SCREEN, but a camera
+ *  looks out of the BACK of the handset, which is the other way up. */
+const qScreenFlip = new THREE.Quaternion(-Math.SQRT1_2, 0, 0, Math.SQRT1_2)
+const devEuler = new THREE.Euler()
+const devQuat = new THREE.Quaternion()
+const qScreenSpin = new THREE.Quaternion()
+const decomposed = new THREE.Euler()
+
+/**
+ * (alpha, beta, gamma, screen angle) -> orientation, in three's frame.
+ *
+ * The spec's angles are an intrinsic Z-X'-Y'' sequence, which is `YXZ` read the
+ * other way round, and `gamma` is negated because the spec's Y'' is the
+ * opposite sense to three's Z. Then the handset is flipped to face out of its
+ * own back, and finally spun by the screen rotation so that turning the phone
+ * into landscape does not tip the world over.
+ */
+function writeDeviceQuaternion(
+  out: THREE.Quaternion,
+  alphaDeg: number,
+  betaDeg: number,
+  gammaDeg: number,
+  screenDeg: number
+): THREE.Quaternion {
+  devEuler.set(betaDeg * DEG, alphaDeg * DEG, -gammaDeg * DEG, "YXZ")
+  out.setFromEuler(devEuler)
+  out.multiply(qScreenFlip)
+  out.multiply(qScreenSpin.setFromAxisAngle(zAxis, -screenDeg * DEG))
+  return out
+}
+
+/**
+ * Screen rotation in degrees, 0/90/180/270.
+ *
+ * `window.orientation` is deprecated and gone from Chrome on Android, and its
+ * convention is INVERTED from the replacement — it reports -90 where
+ * `screen.orientation.angle` reports 270 — so it cannot simply be swapped in.
+ * Normalising into 0..360 makes the two agree.
+ */
+function screenAngle(): number {
+  const angle = window.screen?.orientation?.angle
+  if (typeof angle === "number") return angle
+  const legacy = (window as unknown as { orientation?: number }).orientation
+  return typeof legacy === "number" ? (legacy + 360) % 360 : 0
+}
+
+/** Shortest way round the circle, in radians. */
+function wrapPi(a: number): number {
+  return ((a % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI
 }
 
 /** Shortest-path interpolation between two compass bearings. */
@@ -176,8 +282,11 @@ export function CameraRig() {
     }),
     []
   )
+  /** Free-look offset, RADIANS, damped. Both paths write it. */
   const look = useRef({ yaw: 0, pitch: 0 })
-  const target = useMemo(() => new THREE.Vector3(), [])
+  const lastT = useRef(0)
+  const camEuler = useMemo(() => new THREE.Euler(), [])
+  const sun = useMemo(() => createSunState(), [])
 
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
@@ -190,22 +299,46 @@ export function CameraRig() {
       pointer.active = false
     }
     const onTilt = (e: DeviceOrientationEvent) => {
-      if (e.beta === null || e.gamma === null) return
-      // Portrait: gamma is the left-right roll of the handset, beta the
-      // front-back. In landscape the two swap and one of them inverts.
-      const landscape = Math.abs(window.orientation ?? 0) === 90
-      const flip = (window.orientation ?? 0) === -90 ? -1 : 1
-      const rawYaw = landscape ? e.beta * flip : e.gamma
-      const rawPitch = landscape ? -e.gamma * flip : e.beta
+      const { alpha, beta, gamma } = e
+      // A handset with no sensors still fires the event, with nothing in it.
+      if (alpha === null && beta === null && gamma === null) return
+
+      // Relative wins where it exists: it is gyro-backed, so it neither needs
+      // the magnetometer nor gets bent by it. Once it has spoken, the absolute
+      // event is ignored so the two can never interleave.
+      const type = e.type as typeof tilt.source
+      if (tilt.source === "deviceorientation" && type !== "deviceorientation") return
+      tilt.source = type
+
+      writeDeviceQuaternion(
+        devQuat,
+        alpha ?? 0,
+        beta ?? 0,
+        gamma ?? 0,
+        screenAngle()
+      )
+      decomposed.setFromQuaternion(devQuat, "YXZ")
+      // three's YXZ: x is pitch, y is yaw, z is roll.
+      const devPitch = decomposed.x
+      const devYaw = decomposed.y
 
       if (!tilt.has) {
-        tilt.baseGamma = rawYaw
-        tilt.baseBeta = rawPitch
+        tilt.basePitch = devPitch
         tilt.has = true
       }
-      // Roughly 30 degrees of handset movement covers the full allowance.
-      tilt.x = Math.max(-1, Math.min(1, (rawYaw - tilt.baseGamma) / 30))
-      tilt.y = Math.max(-1, Math.min(1, (rawPitch - tilt.baseBeta) / 30))
+      tilt.pitch = devPitch
+
+      // Integrate yaw rather than reading it, so an arbitrary and drifting
+      // alpha origin never matters — and hold it near the poles, where the
+      // decomposition cannot say what is yaw and what is roll.
+      if (Math.abs(devPitch) < YAW_RELIABLE_PITCH) {
+        if (tilt.hasYaw) tilt.yaw += wrapPi(devYaw - tilt.lastDevYaw)
+        tilt.lastDevYaw = devYaw
+        tilt.hasYaw = true
+      } else {
+        tilt.hasYaw = false
+      }
+
       tilt.active = true
       pointer.idle = 0
     }
@@ -213,49 +346,94 @@ export function CameraRig() {
     window.addEventListener("pointermove", onMove, { passive: true })
     window.addEventListener("pointerleave", onLeave)
     window.addEventListener("deviceorientation", onTilt, { passive: true })
+    window.addEventListener("deviceorientationabsolute", onTilt, { passive: true })
     return () => {
       window.removeEventListener("pointermove", onMove)
       window.removeEventListener("pointerleave", onLeave)
       window.removeEventListener("deviceorientation", onTilt)
+      window.removeEventListener("deviceorientationabsolute", onTilt)
     }
   }, [])
 
   useFrame((_, delta) => {
     const dt = Math.min(delta, 1 / 20)
-    writePose(pose, journey.t)
+    const t = journey.t
+    writePose(pose, t)
 
     // --- position: authored, grounded, never independent of the scroll -----
     camera.position.set(pose.x, groundAt(pose.x, pose.z) + pose.eye, pose.z)
 
-    // --- free look: clamped, eased, and it gives the frame back -----------
+    // How fast the journey itself is moving. Used only to re-aim the free look.
+    const speed = Math.abs(t - lastT.current) / Math.max(dt, 1e-4)
+    lastT.current = t
     pointer.idle += dt
-    // Gyro wins where it exists, because a phone has no pointer to fall back
-    // on and a stale pointer reading would fight it.
-    const lookX = tilt.active ? tilt.x : pointer.x
-    const lookY = tilt.active ? tilt.y : pointer.y
-    const wantYaw = reduced ? 0 : lookX * pose.yawRange
-    const wantPitch = reduced ? 0 : -lookY * pose.pitchRange
-    // After a second and a half of stillness the view returns to the
-    // composition the route authored — but a held phone is never truly still,
-    // so tilt does not expire.
-    const recenter = tilt.active || pointer.idle <= 1.5 ? 1 : 0
-    const ease = 1 - Math.exp(-dt * 6)
-    look.current.yaw += (wantYaw * recenter - look.current.yaw) * ease
-    look.current.pitch += (wantPitch * recenter - look.current.pitch) * ease
 
-    const bearing = ((pose.bearing + look.current.yaw) * Math.PI) / 180
-    const pitch = ((pose.pitch + look.current.pitch) * Math.PI) / 180
+    let wantYaw = 0
+    let wantPitch = 0
 
-    // Bearing to direction: north is -Z, east is +X, clockwise from above.
-    const cp = Math.cos(pitch)
-    target.set(
-      camera.position.x + Math.sin(bearing) * cp * 10,
-      camera.position.y + Math.sin(pitch) * 10,
-      camera.position.z - Math.cos(bearing) * cp * 10
-    )
-    // up is always +Y: zero roll, stable horizon, forever.
+    if (reduced) {
+      // Stated preference; the authored composition and nothing else.
+    } else if (tilt.active) {
+      // --- the magic window ------------------------------------------------
+      // Travelling walks the neutral gently back toward the authored frame, so
+      // a visitor who turned right around while parked is re-aimed by the act
+      // of moving on and can never end up permanently lost facing empty
+      // steppe. It runs ONLY while the scroll is already moving the world, so
+      // it is never motion the visitor did not ask for — which is the whole
+      // anti-nausea contract, kept.
+      const travel = Math.min(1, speed / 0.02)
+      if (travel > 0) {
+        const bleed = 1 - Math.exp(-dt * 1.1 * travel)
+        tilt.yaw -= tilt.yaw * bleed
+        tilt.basePitch += (tilt.pitch - tilt.basePitch) * bleed
+      }
+      wantYaw = tilt.yaw
+      wantPitch = tilt.pitch - tilt.basePitch
+    } else {
+      // --- pointer: clamped, eased, and it gives the frame back ------------
+      // After a second and a half of stillness the view returns to the
+      // composition the route authored.
+      const recenter = pointer.idle <= 1.5 ? 1 : 0
+      wantYaw = -pointer.x * pose.yawRange * DEG * recenter
+      wantPitch = -pointer.y * pose.pitchRange * DEG * recenter
+    }
+
+    // Head tracking has to feel attached to the hand. ~45 ms of time constant
+    // is enough to swallow sensor jitter and far too little to read as lag;
+    // the pointer keeps the softer world damping.
+    const ease = 1 - Math.exp(-dt * (tilt.active ? 22 : 6))
+    look.current.yaw += (wantYaw - look.current.yaw) * ease
+    look.current.pitch += (wantPitch - look.current.pitch) * ease
+
+    // Rotating about +Y takes +x toward -Z, so a compass bearing is a NEGATIVE
+    // yaw. North is -Z, east is +X, clockwise from above.
+    const yaw = -pose.bearing * DEG + look.current.yaw
+    let pitch = pose.pitch * DEG + look.current.pitch
+
+    // --- the crown may not be looked through once the stars are up ---------
+    // Stars seen through an uncovered toono read as poverty, and the camera is
+    // still inside the ger for a stretch where starOpacity has already lifted
+    // off zero while the urkh is only half drawn. Looking up at the LAST BLUE
+    // is the entire subject of stop 07 and stays completely free — the ceiling
+    // only closes as the stars actually arrive, which is exactly when a
+    // household would be drawing the felt across anyway.
+    if (Math.hypot(pose.x, pose.z) < GER_RADIUS) {
+      writeSunState(sun, t)
+      if (sun.starOpacity > 0.02) {
+        const k = Math.min(1, (sun.starOpacity - 0.02) / 0.1)
+        pitch = Math.min(pitch, (88 - 48 * k) * DEG)
+      }
+    }
+    pitch = Math.max(-88 * DEG, Math.min(88 * DEG, pitch))
+
+    // Zero roll, always. A-Frame passes the handset's roll straight through,
+    // and for a headset that is right — but this is a hand-held phone under a
+    // screen-space chrome layer, so a rolling world would either tilt the
+    // horizon under level instruments or force the mark to counter-rotate, and
+    // the mark is not allowed to rotate.
+    camEuler.set(pitch, yaw, 0, "YXZ")
+    camera.quaternion.setFromEuler(camEuler)
     camera.up.set(0, 1, 0)
-    camera.lookAt(target)
   })
 
   return null
