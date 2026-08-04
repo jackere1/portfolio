@@ -61,8 +61,11 @@ function clamp01(v: number) {
 
 export function Soundscape() {
   const entered = useJourneyStore((s) => s.entered)
+  const muted = useJourneyStore((s) => s.muted)
   const started = useRef(false)
   const ctxRef = useRef<AudioContext | null>(null)
+  const masterRef = useRef<GainNode | null>(null)
+  const mutedRef = useRef(muted)
 
   useEffect(() => {
     if (!entered || started.current) return
@@ -79,10 +82,14 @@ export function Soundscape() {
     void ctx.resume()
 
     const master = ctx.createGain()
+    masterRef.current = master
     master.gain.value = 0.0
     master.connect(ctx.destination)
-    // Ease in rather than snapping on at full level.
-    master.gain.linearRampToValueAtTime(0.9, ctx.currentTime + 1.4)
+    // Ease in rather than snapping on at full level — and stay silent if the
+    // visitor arrived already muted from a previous visit.
+    if (!mutedRef.current) {
+      master.gain.linearRampToValueAtTime(0.9, ctx.currentTime + 1.4)
+    }
 
     const beds: Bed[] = []
 
@@ -263,6 +270,17 @@ export function Soundscape() {
       void ctx.close()
     }
   }, [entered])
+
+  // The toggle rides the master gain rather than tearing the graph down, so
+  // unmuting resumes the same continuous beds at the same phase.
+  useEffect(() => {
+    mutedRef.current = muted
+    const ctx = ctxRef.current
+    const master = masterRef.current
+    if (!ctx || !master) return
+    master.gain.cancelScheduledValues(ctx.currentTime)
+    master.gain.setTargetAtTime(muted ? 0 : 0.9, ctx.currentTime, 0.12)
+  }, [muted])
 
   return null
 }

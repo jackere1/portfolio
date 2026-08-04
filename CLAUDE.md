@@ -110,7 +110,13 @@ expected to print **zero** errors — not "fewer". If it prints any, you added t
 
 ### Chrome
 - `components/ui/toono-mark.tsx` — the mark and the dial, one geometry doing both jobs.
-- `components/ui/chrome.tsx` — instruments, dial, entry ritual.
+- `components/ui/chrome.tsx` — instruments, dial, entry ritual, sound toggle, scroll hint,
+  and arrow-key navigation of the route. The entry overlay sits on the night ground whatever
+  the sky is doing, so it carries the night inks explicitly — inheriting the daylight phase
+  put dark text on a black screen.
+- Sound is **muted-able and remembers**: playing audio with no off switch is a real failure,
+  and being asked to mute the same site twice is a small rudeness. The toggle rides the master
+  gain rather than tearing the graph down, so unmuting resumes the same beds at the same phase.
 - `components/ui/flat-tier.tsx` — the same seven stops, held still.
 
 ---
@@ -237,6 +243,12 @@ These each cost real time to find. They are not stylistic.
   the ruts have to be a change of GROUND COLOUR too. And the tan has to be clearly paler than
   the sward, over a band wider than the hero mesh's 1.25 m vertex spacing, or it is smeared
   away before it can be seen.
+- **The ground texture supplies LUMINANCE; the palette supplies HUE.** The `steppe-grass`
+  albedo is genuinely green — its mean is (96, 109, 48), green above red — so multiplying a
+  gold palette through it dragged the whole steppe olive, which is the loudest kitsch tell
+  there is. The shader takes its luminance, normalises it to a mean of one so it modulates
+  rather than darkens, and keeps only a trace of its colour. Swapping the texture later cannot
+  reintroduce the green. **Equal red and green reads GREEN** — check any new tint for that.
 - **There is almost no tall grass around a Mongolian camp, because the herd eats it.** The
   ground is cropped to stubble and bald soil for hundreds of metres and does not recover
   while the family is camped there. A waving knee-high sward outside a ger is one of the

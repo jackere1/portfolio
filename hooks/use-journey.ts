@@ -21,14 +21,18 @@ export const journey = {
   entered: false,
 }
 
+const MUTE_KEY = "ailchin:muted"
+
 interface JourneyState {
   /** Discrete, low-frequency state only — safe to re-render on. */
   ready: boolean
   entered: boolean
+  muted: boolean
   stopId: string
   phase: "day" | "dusk" | "night"
   setReady: (v: boolean) => void
   enter: () => void
+  toggleMuted: () => void
   /** Called by the scroll driver; only pushes when a DISCRETE value changed. */
   syncDiscrete: (stopId: string, phase: "day" | "dusk" | "night") => void
 }
@@ -36,6 +40,11 @@ interface JourneyState {
 export const useJourneyStore = create<JourneyState>((set) => ({
   ready: false,
   entered: false,
+  // Remembered across visits: being asked to mute the same site twice is the
+  // kind of small rudeness people do not forgive.
+  muted:
+    typeof window !== "undefined" &&
+    window.localStorage?.getItem(MUTE_KEY) === "1",
   stopId: "track",
   phase: "day",
   setReady: (v) => set({ ready: v }),
@@ -43,6 +52,16 @@ export const useJourneyStore = create<JourneyState>((set) => ({
     journey.entered = true
     set({ entered: true })
   },
+  toggleMuted: () =>
+    set((s) => {
+      const muted = !s.muted
+      try {
+        window.localStorage?.setItem(MUTE_KEY, muted ? "1" : "0")
+      } catch {
+        // Private browsing. Not worth failing over.
+      }
+      return { muted }
+    }),
   syncDiscrete: (stopId, phase) =>
     set((s) =>
       s.stopId === stopId && s.phase === phase ? s : { stopId, phase }

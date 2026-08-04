@@ -220,7 +220,13 @@ const FRAG = /* glsl */ `
       vec3(0.44,  0.355, 0.155),
       vUp
     );
-    base = mix(base, vec3(0.52, 0.44, 0.22), vTint * 0.45);
+    // Per-tuft colour spread. A grazed sward is a mixture of species and of
+    // how long since each was last bitten, and a single hue across the whole
+    // field is one of the quieter tells.
+    base = mix(base, vec3(0.55, 0.46, 0.20), smoothstep(0.0, 0.55, vTint) * 0.62);
+    // Browner, not greener. Equal red and green reads GREEN, and green grass
+    // outside a ger is the loudest kitsch tell there is.
+    base = mix(base, vec3(0.33, 0.26, 0.12), smoothstep(0.62, 1.0, vTint) * 0.5);
     base = mix(base, vec3(0.60, 0.545, 0.36), smoothstep(0.80, 1.0, vUp) * 0.55);
 
     if (uSpecies > 0.5) {

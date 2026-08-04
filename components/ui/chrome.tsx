@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { journey, useJourneyStore } from "@/hooks/use-journey"
 import { activeStop, STOPS } from "@/lib/stops"
 import { createSunState, localTimeAt, writeSunState } from "@/lib/sun-arc"
@@ -74,6 +74,56 @@ function Instruments() {
   )
 }
 
+function SoundToggle() {
+  const muted = useJourneyStore((s) => s.muted)
+  const toggle = useJourneyStore((s) => s.toggleMuted)
+
+  return (
+    <button
+      className="snap"
+      onClick={toggle}
+      aria-pressed={!muted}
+      aria-label={muted ? "Turn sound on" : "Turn sound off"}
+      title={muted ? "Sound off" : "Sound on"}
+      style={{
+        position: "absolute",
+        right: 26,
+        bottom: 26,
+        appearance: "none",
+        background: "transparent",
+        border: "none",
+        padding: 6,
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+      }}
+    >
+      {/* Three bars of grass bending in wind — full when the sound is on,
+          flattened when it is off. The world's own vocabulary, not a speaker. */}
+      <svg width="18" height="16" viewBox="0 0 18 16" fill="none" aria-hidden>
+        {[0, 1, 2].map((i) => {
+          const h = muted ? 3 : [7, 12, 9][i]
+          return (
+            <path
+              key={i}
+              d={`M${3 + i * 6} 14 Q${4.4 + i * 6} ${14 - h / 2} ${
+                5.6 + i * 6
+              } ${14 - h}`}
+              stroke="var(--ink-dim)"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+            />
+          )
+        })}
+      </svg>
+      <span className="t-micro" style={{ letterSpacing: "0.24em" }}>
+        {muted ? "OFF" : "ON"}
+      </span>
+    </button>
+  )
+}
+
 function Entry() {
   const entered = useJourneyStore((s) => s.entered)
   const ready = useJourneyStore((s) => s.ready)
@@ -90,6 +140,11 @@ function Entry() {
         display: "grid",
         placeItems: "center",
         opacity: 1,
+        // The entry is ALWAYS on the night ground, whatever the sky is doing
+        // behind it, so it carries the night inks explicitly. Inheriting the
+        // daylight phase put dark text on a black screen.
+        ["--ink" as string]: "var(--starlit)",
+        ["--ink-dim" as string]: "var(--starlit-dim)",
       }}
     >
       <div style={{ display: "grid", justifyItems: "center", gap: 30 }}>
@@ -117,13 +172,68 @@ function Entry() {
           {ready ? "Enter as a guest" : "Loading"}
         </button>
 
-        <p
-          className="t-micro"
-          style={{ margin: 0, color: "var(--stone)", letterSpacing: "0.2em" }}
-        >
-          scroll to approach · move to look
-        </p>
+        <div style={{ display: "grid", justifyItems: "center", gap: 9 }}>
+          <p
+            className="t-micro"
+            style={{ margin: 0, letterSpacing: "0.2em" }}
+          >
+            scroll to approach · move to look
+          </p>
+          <p
+            className="t-micro"
+            style={{ margin: 0, letterSpacing: "0.2em" }}
+          >
+            nine stops · afternoon to night · about four minutes
+          </p>
+        </div>
       </div>
+    </div>
+  )
+}
+
+/** Shown until the visitor actually scrolls, then gone for good. A hint that
+ *  outstays its usefulness is just clutter over the world. */
+function ScrollHint() {
+  const [gone, setGone] = useState(false)
+
+  useEffect(() => {
+    const check = () => {
+      if (journey.t > 0.012) {
+        setGone(true)
+        window.removeEventListener("scroll", check)
+      }
+    }
+    window.addEventListener("scroll", check, { passive: true })
+    return () => window.removeEventListener("scroll", check)
+  }, [])
+
+  if (gone) return null
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: "50%",
+        bottom: 34,
+        transform: "translateX(-50%)",
+        display: "grid",
+        justifyItems: "center",
+        gap: 7,
+        pointerEvents: "none",
+      }}
+    >
+      <span className="t-micro" style={{ letterSpacing: "0.28em" }}>
+        SCROLL
+      </span>
+      <svg width="13" height="20" viewBox="0 0 13 20" fill="none" aria-hidden>
+        <path
+          d="M6.5 1 L6.5 17 M2 12.5 L6.5 17 L11 12.5"
+          stroke="var(--ink-dim)"
+          strokeWidth="1.3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
     </div>
   )
 }
@@ -145,6 +255,29 @@ export function Chrome() {
     const w = window as unknown as { __ailchin?: { seek: (t: number) => void } }
     w.__ailchin?.seek(target.t)
   }
+
+  // Arrow keys walk the route. The dial is already clickable, so not being
+  // able to reach the same thing from the keyboard was simply an omission.
+  useEffect(() => {
+    if (!entered) return
+    const onKey = (e: KeyboardEvent) => {
+      const i = STOPS.findIndex((s) => s.id === stopId)
+      if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+        if (i < STOPS.length - 1) seek(i + 1)
+      } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+        if (i > 0) seek(i - 1)
+      } else if (e.key === "Home") {
+        seek(0)
+      } else if (e.key === "End") {
+        seek(STOPS.length - 1)
+      } else {
+        return
+      }
+      e.preventDefault()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [entered, stopId])
 
   return (
     <div className="chrome">
@@ -177,6 +310,8 @@ export function Chrome() {
           </div>
 
           <Instruments />
+          <SoundToggle />
+          <ScrollHint />
         </>
       )}
 

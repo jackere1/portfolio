@@ -43,9 +43,9 @@ import {
  *  invisible. UVs are computed in world space rather than per-geometry. */
 const TILE = 7.0
 
-const GRASS_TINT = new THREE.Color(0.42, 0.35, 0.19) // dry gold-khaki
-const OLIVE_TINT = new THREE.Color(0.27, 0.27, 0.17) // duller, in the hollows
-const SOIL_TINT = new THREE.Color(0.36, 0.3, 0.22) // pale bare earth
+const GRASS_TINT = new THREE.Color(0.47, 0.37, 0.16) // dry gold-khaki
+const OLIVE_TINT = new THREE.Color(0.29, 0.25, 0.15) // duller, in the hollows
+const SOIL_TINT = new THREE.Color(0.4, 0.32, 0.21) // pale bare earth
 const DUNG_TINT = new THREE.Color(0.24, 0.21, 0.17) // trampled, flecked
 const RUT_TINT = new THREE.Color(0.66, 0.58, 0.44) // hard-packed, pale, dusty
 const ROCK_TINT = new THREE.Color(0.3, 0.29, 0.28) // exposed rock on the ridges
@@ -55,6 +55,33 @@ const SCREE_TINT = new THREE.Color(0.46, 0.45, 0.44) // pale broken stone up hig
  *  move, and it does what a single fog colour cannot: the far ridges separate
  *  from the near ones into steps instead of stacking into one flat mass. */
 const HAZE_TINT = new THREE.Color(0.42, 0.5, 0.66)
+/** Broad patches. Steppe is not one colour — it is a mosaic of where the soil
+ *  is thinner, where a hollow held water in spring, where last year's growth
+ *  still lies. At distance that mosaic is most of what stops a plain reading as
+ *  a painted plane. */
+const PATCH_PALE = new THREE.Color(0.58, 0.49, 0.28) // thin soil, bleached
+const PATCH_LOAM = new THREE.Color(0.25, 0.21, 0.13) // deeper, damper hollows
+
+const GROUND_PATCH_SEED = 0x9e3779b9
+function patchHash(ix: number, iz: number): number {
+  let h = GROUND_PATCH_SEED ^ Math.imul(ix | 0, 0x27d4eb2d)
+  h = Math.imul(h ^ (iz | 0), 0x165667b1)
+  h = Math.imul(h ^ (h >>> 15), 0x2545f491)
+  h ^= h >>> 13
+  return (h >>> 0) / 4294967296
+}
+function patchNoise(x: number, z: number): number {
+  const x0 = Math.floor(x)
+  const z0 = Math.floor(z)
+  const fx = smoothstep(0, 1, x - x0)
+  const fz = smoothstep(0, 1, z - z0)
+  const a =
+    patchHash(x0, z0) + (patchHash(x0 + 1, z0) - patchHash(x0, z0)) * fx
+  const b =
+    patchHash(x0, z0 + 1) +
+    (patchHash(x0 + 1, z0 + 1) - patchHash(x0, z0 + 1)) * fx
+  return a + (b - a) * fz
+}
 
 function smoothstep(a: number, b: number, x: number): number {
   const k = Math.max(0, Math.min(1, (x - a) / (b - a)))
@@ -71,6 +98,14 @@ function groundColor(
   const d = Math.hypot(x, z)
   const slope = slopeAt(x, z)
   out.copy(GRASS_TINT).lerp(OLIVE_TINT, smoothstep(0.05, 0.4, slope))
+
+  // Two scales of patchwork: broad sweeps a hundred metres across, and smaller
+  // variation inside them.
+  const p =
+    patchNoise(x * 0.011 + 4.3, z * 0.011 - 2.9) * 0.68 +
+    patchNoise(x * 0.043 - 7.1, z * 0.043 + 5.5) * 0.32
+  if (p > 0.54) out.lerp(PATCH_PALE, smoothstep(0.54, 0.82, p) * 0.55)
+  else out.lerp(PATCH_LOAM, smoothstep(0.46, 0.2, p) * 0.4)
 
   // --- the ranges -----------------------------------------------------------
   // Grass gives out as the ground rises and steepens: rock on the shoulders,
@@ -305,7 +340,17 @@ export function Terrain() {
             "  vec4 fine = texture2D(map, vMapUv * 4.7);",
             "  float grain = dot(fine.rgb, vec3(0.333)) - 0.5;",
             "  sampledDiffuseColor.rgb *= 1.0 + grain * 0.45;",
-            "  diffuseColor *= sampledDiffuseColor;",
+            // The photo is GREEN — its mean is (96, 109, 48), green above red.
+            // Multiplying a gold palette through it drags the whole steppe
+            // olive, which is the single loudest kitsch tell this world has a
+            // rule against. So the texture supplies LUMINANCE and the vertex
+            // colour supplies HUE: normalised to a mean of one so it modulates
+            // rather than darkens, with a trace of its own colour left in.
+            // Swapping the texture later cannot reintroduce the green.
+            "  float lum = dot(sampledDiffuseColor.rgb, vec3(0.299, 0.587, 0.114));",
+            "  vec3 detail = mix(vec3(lum), sampledDiffuseColor.rgb, 0.16) / 0.53;",
+            "  detail = 1.0 + (detail - 1.0) * 0.9;",
+            "  diffuseColor.rgb *= detail;",
             "#endif",
           ].join("\n")
         )
