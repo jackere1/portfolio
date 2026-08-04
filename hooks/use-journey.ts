@@ -2,6 +2,10 @@
 
 import { create } from "zustand"
 import { activeStop } from "@/lib/stops"
+import { createSunState, writeSunState } from "@/lib/sun-arc"
+
+/** One reused state object; setProgress runs on every scroll frame. */
+const scratch = createSunState()
 
 /**
  * The hot path. `journey.t` is written by Lenis every frame and read by every
@@ -22,18 +26,18 @@ interface JourneyState {
   ready: boolean
   entered: boolean
   stopId: string
-  phase: "dusk" | "night"
+  phase: "day" | "dusk" | "night"
   setReady: (v: boolean) => void
   enter: () => void
   /** Called by the scroll driver; only pushes when a DISCRETE value changed. */
-  syncDiscrete: (stopId: string, phase: "dusk" | "night") => void
+  syncDiscrete: (stopId: string, phase: "day" | "dusk" | "night") => void
 }
 
 export const useJourneyStore = create<JourneyState>((set) => ({
   ready: false,
   entered: false,
   stopId: "track",
-  phase: "dusk",
+  phase: "day",
   setReady: (v) => set({ ready: v }),
   enter: () => {
     journey.entered = true
@@ -55,6 +59,8 @@ export function setProgress(t: number): void {
   journey.t = clamped
 
   const stopId = activeStop(clamped).id
-  const phase: "dusk" | "night" = clamped >= 0.48 ? "night" : "dusk"
-  useJourneyStore.getState().syncDiscrete(stopId, phase)
+  // Read the phase off the same arc everything else reads, so the chrome can
+  // never disagree with the sky about whether it is day.
+  writeSunState(scratch, clamped)
+  useJourneyStore.getState().syncDiscrete(stopId, scratch.phase)
 }

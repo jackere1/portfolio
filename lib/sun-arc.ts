@@ -62,8 +62,9 @@ export interface SunState {
    *  anything depending on it must be removable, not merely faded. */
   warmLife: number
 
-  /** Which ink phase the DOM chrome is in. */
-  phase: "dusk" | "night"
+  /** Which ink phase the DOM chrome is in. The chrome has to invert:
+   *  a bright afternoon sky needs DARK ink, and a night sky needs light. */
+  phase: "day" | "dusk" | "night"
 }
 
 // --- keyframe machinery -----------------------------------------------------
@@ -368,7 +369,8 @@ export function writeSunState(out: SunState, t: number): void {
   out.starOpacity = clamp((-elevation - 6) / 6, 0, 1)
 
   out.warmLife = clamp((0.48 - p) / 0.18, 0, 1)
-  out.phase = p >= 0.48 ? "night" : "dusk"
+  out.phase =
+    elevation > 3 ? "day" : elevation > -6 ? "dusk" : "night"
 }
 
 /** Allocate a zeroed state object. Create one per consumer, then reuse it. */
@@ -396,7 +398,7 @@ export function createSunState(): SunState {
     exposure: 1,
     starOpacity: 0,
     warmLife: 1,
-    phase: "dusk",
+    phase: "day",
   }
   writeSunState(s, 0)
   return s

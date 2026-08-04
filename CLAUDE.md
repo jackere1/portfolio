@@ -214,6 +214,13 @@ These each cost real time to find. They are not stylistic.
   grows exactly where the dung is — which also makes it the only genuinely green thing in a
   gold landscape — and **дэрс** (chee grass) tussocks further out. `GRAZING` in
   `lib/world.ts` reaches to 190 m; `BUUTS` is only the visibly trampled ring.
+- **The chrome inverts across the arc.** `data-phase` on `<html>` is `day` / `dusk` / `night`,
+  read off the same sun elevation as everything else. A bright afternoon sky needs DARK ink and
+  a night sky needs light — the same token doing both is what keeps the instruments legible
+  without ever introducing a panel to sit them on. Both tiers set it.
+- **The flat tier must TONE MAP the arc's colours, not clamp them.** They are linear HDR and the
+  afternoon sky is above 1.0; clamping collapses every daytime value to the same washed grey and
+  throws the whole afternoon away.
 - **Palette is a timeline, not a swatch grid.** Tokens are grouped by when in the sun arc
   they may exist; `--grass-gold` and `--belt-venus` die at t=0.48 and do not come back.
   There is no white anywhere, and no fourth surface colour — no cards, no panels. Depth is

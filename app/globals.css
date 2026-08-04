@@ -44,6 +44,19 @@
   --ink-dim: var(--canvas-dust);
 }
 
+/* The chrome INVERTS across the arc. A bright afternoon sky needs dark ink and
+   a night sky needs light, and the same token doing both is what keeps the
+   instruments legible without ever introducing a panel to sit them on. */
+:root[data-phase="day"] {
+  --ink: oklch(0.24 0.02 258);
+  --ink-dim: oklch(0.4 0.018 256);
+}
+
+:root[data-phase="dusk"] {
+  --ink: var(--felt-bone);
+  --ink-dim: var(--canvas-dust);
+}
+
 :root[data-phase="night"] {
   --ink: var(--starlit);
   --ink-dim: var(--starlit-dim);
@@ -217,4 +230,10 @@ html::-webkit-scrollbar {
 .chrome .t-stencil,
 .chrome .t-micro {
   text-shadow: 0 1px 3px oklch(0.06 0.02 260 / 0.75);
+}
+
+:root[data-phase="day"] .chrome .t-value,
+:root[data-phase="day"] .chrome .t-stencil,
+:root[data-phase="day"] .chrome .t-micro {
+  text-shadow: 0 1px 3px oklch(0.98 0.01 90 / 0.6);
 }

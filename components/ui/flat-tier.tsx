@@ -12,10 +12,17 @@ import { ToonoMark } from "./toono-mark"
 // travelled. It reads the identical lib/sun-arc, so the light here and the
 // light in the 3D tier are the same light; only the renderer changes.
 
+/**
+ * The arc's colours are LINEAR HDR — the afternoon sky is above 1.0 — so they
+ * have to be tone mapped, not clamped. Clamping turns every daytime value into
+ * the same washed grey and throws away the whole afternoon.
+ */
 function rgbCss(c: { r: number; g: number; b: number }, scale = 255): string {
-  const k = (v: number) =>
-    Math.round(Math.max(0, Math.min(1, v)) * scale)
-  return `rgb(${k(c.r)} ${k(c.g)} ${k(c.b)})`
+  const map = (v: number) => {
+    const t = Math.max(0, v) / (1 + Math.max(0, v)) // Reinhard
+    return Math.round(Math.min(1, Math.pow(t * 1.9, 1 / 2.2)) * scale)
+  }
+  return `rgb(${map(c.r)} ${map(c.g)} ${map(c.b)})`
 }
 
 export function FlatTier() {
@@ -37,6 +44,12 @@ export function FlatTier() {
   }, [])
 
   const sun = sunStateAt(t)
+
+  // The flat tier drives the ink phase too — it is the same journey, and it
+  // has the same problem of light text on a bright afternoon sky.
+  useEffect(() => {
+    document.documentElement.dataset.phase = sun.phase
+  }, [sun.phase])
 
   return (
     <>
