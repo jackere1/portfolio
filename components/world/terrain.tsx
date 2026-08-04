@@ -238,7 +238,7 @@ export function Terrain() {
   const hero = useMemo(buildHero, [])
   const skirt = useMemo(buildSkirt, [])
   // repeat is 1: the UVs above are already in world tiles.
-  const pbr = usePbrMaterial("steppe-grass", { repeat: [1, 1], anisotropy: 8 })
+  const pbr = usePbrMaterial("steppe-grass", { repeat: [1, 1], anisotropy: 16 })
   const sun = useMemo(() => createSunState(), [])
   const reduced = useReducedMotion()
   const clock = useRef(0)
@@ -284,6 +284,30 @@ export function Terrain() {
           "#include <common>\nvarying vec3 vCloudWorld;\n" +
             CLOUD_GLSL +
             CLOUD_SHADOW_GLSL
+        )
+        // ANTI-TILING. One albedo repeated every seven metres over a
+        // kilometre of ground is a grid, and the eye finds a grid instantly.
+        // Two samples at incommensurate scales, cross-faded by a low-frequency
+        // field, break the repeat without needing a second texture — and a
+        // third, much finer sample puts detail back at arm's length, where a
+        // seven-metre tile has none left to give.
+        .replace(
+          "#include <map_fragment>",
+          [
+            "#ifdef USE_MAP",
+            "  vec2 uvA = vMapUv;",
+            "  vec2 uvB = vMapUv * 0.41 + vec2(37.1, 11.7);",
+            "  float blend = smoothstep(0.35, 0.65,",
+            "    cloudNoise2(vCloudWorld.xz * 0.021));",
+            "  vec4 texA = texture2D(map, uvA);",
+            "  vec4 texB = texture2D(map, uvB);",
+            "  vec4 sampledDiffuseColor = mix(texA, texB, blend);",
+            "  vec4 fine = texture2D(map, vMapUv * 4.7);",
+            "  float grain = dot(fine.rgb, vec3(0.333)) - 0.5;",
+            "  sampledDiffuseColor.rgb *= 1.0 + grain * 0.45;",
+            "  diffuseColor *= sampledDiffuseColor;",
+            "#endif",
+          ].join("\n")
         )
         .replace(
           "#include <opaque_fragment>",
