@@ -67,9 +67,16 @@ Next.js 16 (App Router, Turbopack) · React 19 · TypeScript strict · Tailwind 
 expected to print **zero** errors — not "fewer". If it prints any, you added them.
 `next.config.mjs` still sets `typescript.ignoreBuildErrors: true`; do not rely on it.
 
-> Environment note: the pnpm store contains files owned by an unmapped UID, so
-> `pnpm install` fails at the bin-linking step with `EPERM ... chmod`. Packages still
-> resolve and land. Edit `package.json` directly and verify with `tsc`/`build`.
+> Environment note: the pnpm store contains files owned by an unmapped UID, so a full
+> `pnpm install` fails at the BIN-LINKING step with `EPERM ... chmod`. Resolution itself is
+> fine, so **use `pnpm install --lockfile-only`** after any `package.json` change — it writes
+> the lockfile and never touches `node_modules`, so it sidesteps the failure entirely.
+>
+> **This matters for deploys.** Editing `package.json` and letting the install die at linking
+> leaves `pnpm-lock.yaml` stale, and Vercel builds with `--frozen-lockfile`, which refuses a
+> lockfile that disagrees with the manifest. That is a green local build and a red deploy.
+> Verify with `pnpm install --frozen-lockfile --lockfile-only`, which is exactly the check
+> the deploy runs.
 
 ---
 
