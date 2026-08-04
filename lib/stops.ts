@@ -167,11 +167,14 @@ export const STOPS: readonly Stop[] = [
     // Through the door again. Behind you the ger has sealed itself: the urkh
     // drawn over the crown, the khayaa rolled down, the door shut against the
     // cold. The only warm thing left in the world is a seam of light.
-    x: 0.2,
-    z: 5.4,
-    eye: 1.6,
-    bearing: 8,
-    pitch: 4,
+    // Far enough back that the WHOLE sealed ger reads — crown covered, khayaa
+    // down, door shut with one seam of light in it. At two metres it was just
+    // a door filling the frame, which is not the beat.
+    x: 1.1,
+    z: 9.2,
+    eye: 1.62,
+    bearing: 5,
+    pitch: 8,
     yawRange: 34,
     pitchRange: 20,
   },

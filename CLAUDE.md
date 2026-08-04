@@ -171,10 +171,15 @@ These each cost real time to find. They are not stylistic.
     red and reddish-yellow; the toono in particular is coloured for the sun, with the uni as
     its rays. It should be the warmest wood in the ger. (An earlier version painted the spokes
     khadag blue, which inverted the symbolism.)
-16. **The urkh is drawn after dark.** It is folded back over the north roof slope by day to let
-    the sun in, and drawn across the crown when it gets dark — along with the khayaa rolling
-    down and the door shutting. Both are driven off sun elevation in `lib/sun-arc.ts`, so the
-    ger visibly seals itself while the guest is inside, and stop 08 walks back out into that.
+16. **The ger opens and closes across the day, and all three parts must actually be wired.**
+    The urkh is folded back over the north roof slope by day and drawn across the crown after
+    dark; the khayaa (the wall skirt) is rolled UP through the heat — which is why the orange
+    lattice shows at the base all afternoon — and rolled DOWN when the cold comes; the door
+    stands open in the summer sun and is shut at night. All three read `sun.urkh` /
+    `sun.khayaaRoll` from `lib/sun-arc.ts`, so the ger seals itself while the guest is inside
+    and stop 08 walks back out into that. **Watch for half-wired versions of this**: the
+    khayaa value existed in the sun state and in this file for a while before anything in the
+    ger actually read it, so the brief claimed a seal the render never performed.
 17. **The bagana stand ON the toono ring** (x = ±`toonoRadius`), not inside it. And you must
     never walk between them — the interior camera path passes outside the west one.
 18. **Nothing may fill the toono opening.** The crown glow is a RING at the rim. It was once

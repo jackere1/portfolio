@@ -134,6 +134,9 @@ export function Ger({
       {/* --- the urkh: the felt over the crown ------------------------------ */}
       <Urkh build={build} />
 
+      {/* --- the khayaa: the wall skirt ------------------------------------- */}
+      <Khayaa params={params} />
+
       {/* --- tension bands -------------------------------------------------- */}
       {build.bands.map((b, i) => (
         <mesh key={i} position={[0, b.y, 0]} rotation={[Math.PI / 2, 0, 0]}>
@@ -250,5 +253,61 @@ function DoorLeaves({ build }: { build: ReturnType<typeof generateGer> }) {
         </group>
       ))}
     </group>
+  )
+}
+
+/**
+ * The khayaa (хаяа) — the skirt of the wall cover.
+ *
+ * Rolled UP through the summer heat to let air under the wall, which is why
+ * the orange lattice shows at the base all afternoon, and rolled DOWN when the
+ * temperature drops — and in August at this latitude and altitude it drops
+ * hard after sunset. Along with the urkh being drawn and the door being shut,
+ * this is the ger closing itself for the night, and it is the reason stop 08
+ * walks back out into a sealed home.
+ *
+ * Modelled as its own strip rather than by rebuilding the cover: the khayaa IS
+ * a separate piece of felt in life, and rebuilding a lathe every frame to
+ * animate one is the wrong kind of expensive.
+ */
+function Khayaa({ params }: { params: GerParams }) {
+  const ref = useRef<THREE.Mesh>(null)
+  const sun = useMemo(() => createSunState(), [])
+  const roll = params.khayaaRoll
+
+  useFrame(() => {
+    writeSunState(sun, journey.t)
+    const m = ref.current
+    if (!m) return
+    // sun.khayaaRoll runs from `roll` (up, hot) to 0 (down, cold).
+    const openness = Math.max(0, Math.min(1, sun.khayaaRoll / roll))
+    // Down: full height, hanging to the ground. Up: bunched into a roll.
+    const h = 1 - openness * 0.82
+    m.scale.set(1, h, 1)
+    m.position.y = roll - (roll * h) / 2 + 0.002
+    m.visible = h > 0.06
+  })
+
+  return (
+    <mesh ref={ref} position={[0, roll / 2, 0]} castShadow>
+      <cylinderGeometry
+        args={[
+          params.radius + 0.045,
+          params.radius + 0.045,
+          roll,
+          64,
+          1,
+          true,
+          Math.asin(0.39 / params.radius) + 0.03,
+          Math.PI * 2 - (Math.asin(0.39 / params.radius) + 0.03) * 2,
+        ]}
+      />
+      <meshStandardMaterial
+        color="#4a4136"
+        roughness={0.97}
+        metalness={0}
+        side={THREE.DoubleSide}
+      />
+    </mesh>
   )
 }
