@@ -206,6 +206,11 @@ These each cost real time to find. They are not stylistic.
   straight at 20°, never a Turkic dome. The Milky Way is grey-white, never purple.
   **Banned:** lush green grass, wheat-field waving, eagle hunters (Kazakh, far west),
   prayer-flag strings (Tibetan), fences, paved roads, streetlights.
+- **A feature that exists only in the grass mask does not exist.** The twin-rut track thinned
+  the sward and nothing else, which was invisible the moment the sward became grazed stubble —
+  the ruts have to be a change of GROUND COLOUR too. And the tan has to be clearly paler than
+  the sward, over a band wider than the hero mesh's 1.25 m vertex spacing, or it is smeared
+  away before it can be seen.
 - **There is almost no tall grass around a Mongolian camp, because the herd eats it.** The
   ground is cropped to stubble and bald soil for hundreds of metres and does not recover
   while the family is camped there. A waving knee-high sward outside a ger is one of the
@@ -319,9 +324,16 @@ there.
 via a waypoint north of the camp. A straight interpolation from pasture to corral walked all
 120 animals through the middle of the camp and past the camera.
 
-**Still missing:** nothing on the audit's MUST FIX list. What remains is polish and the
-accumulated tuning constants — the terrain map, the grass placement and the ger generator all
-carry numbers nobody has revisited since the arc changed underneath them.
+**Still missing:** nothing on the audit's MUST FIX list. What remains is polish, plus two
+things worth knowing.
+
+The entities — the flock, the horses, the bankhar, the host — are deliberately crude. They are
+placeholder silhouettes pending a proper redesign, and they are the weakest thing in the frame.
+
+And several tuning constants still date from the seven-stop dusk route and have not been
+re-checked against the afternoon start: `GRAZING`, `BUUTS`, `NETTLE_RING`, the flock's grazing
+annulus, and the corral's placement. The track was the first of these to be checked and it was
+wrong in a way worth remembering — see below.
 
 The full plan, including the v1 cut list and the phase order, is at
 `~/.claude/plans/lets-build-everything-from-golden-tide.md`.

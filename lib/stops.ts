@@ -59,11 +59,14 @@ export const STOPS: readonly Stop[] = [
     label: "The Track's End",
     // Mid-afternoon on open ground, out where the twin ruts come in. The camp
     // is a small white speck; you are being seen coming, which is the point.
-    x: 18,
+    // Standing ON the ruts, not five metres beside them — the stop is named
+    // after the track and it should be underfoot. From here the pair runs away
+    // ahead and to the left, toward the camp.
+    x: 22,
     z: -104,
     eye: EYE_HEIGHT,
-    bearing: 196,
-    pitch: -3,
+    bearing: 190,
+    pitch: -5,
     yawRange: 28,
     pitchRange: 14,
   },

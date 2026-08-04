@@ -4,6 +4,7 @@ import { useMemo } from "react"
 import * as THREE from "three"
 import { usePbrMaterial } from "@/lib/textures"
 import { heightAt, slopeAt } from "@/lib/heightfield"
+import { rutDistance } from "@/lib/terrain-maps"
 import {
   BUUTS,
   SKIRT_SIZE,
@@ -36,6 +37,7 @@ const GRASS_TINT = new THREE.Color(0.42, 0.35, 0.19) // dry gold-khaki
 const OLIVE_TINT = new THREE.Color(0.27, 0.27, 0.17) // duller, in the hollows
 const SOIL_TINT = new THREE.Color(0.36, 0.3, 0.22) // pale bare earth
 const DUNG_TINT = new THREE.Color(0.24, 0.21, 0.17) // trampled, flecked
+const RUT_TINT = new THREE.Color(0.66, 0.58, 0.44) // hard-packed, pale, dusty
 
 function smoothstep(a: number, b: number, x: number): number {
   const k = Math.max(0, Math.min(1, (x - a) / (b - a)))
@@ -51,6 +53,12 @@ function groundColor(x: number, z: number, out: THREE.Color): void {
     const soil = SOIL_TINT.clone().lerp(DUNG_TINT, 1 - smoothstep(2, 12, d))
     out.lerp(soil, 1 - halo)
   }
+  // The ruts: two hard-packed, pale, dusty lines. No pavement, no signs, no
+  // paint — this is the only road there is, and it has to READ as one, which
+  // means the tan must be clearly paler than the sward and the band must be
+  // wider than the mesh's 1.25 m vertex spacing or it is smeared to nothing.
+  const rut = smoothstep(0.3, 2.4, rutDistance(x, z))
+  if (rut < 1) out.lerp(RUT_TINT, (1 - rut) * 0.9)
 }
 
 function buildHero(): THREE.BufferGeometry {

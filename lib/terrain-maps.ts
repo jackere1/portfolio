@@ -78,6 +78,26 @@ function distanceToRuts(x: number, z: number): number {
   return Math.hypot(Math.abs(perp - 1.15), along)
 }
 
+/**
+ * How hard-packed the ground is here: 0 on a rut, 1 off it.
+ *
+ * Exported because the ruts have to be a change of GROUND, not only a hole in
+ * the grass. Thinning the sward alone is invisible once the sward is grazed
+ * stubble — which is the whole point of this landscape — so the terrain's own
+ * colouring reads this too and lays down the two hard tan lines.
+ */
+export function rutMask(x: number, z: number): number {
+  return smoothstep(0.35, 1.5, distanceToRuts(x, z))
+}
+
+/** Raw metres to the nearer rut, so consumers can pick their own falloff. The
+ *  ground's colour band is deliberately WIDER than the grass mask: the hero
+ *  mesh has a vertex every 1.25 m, and a feature narrower than that is smeared
+ *  away before it can be seen. */
+export function rutDistance(x: number, z: number): number {
+  return distanceToRuts(x, z)
+}
+
 function smoothstep(a: number, b: number, x: number): number {
   const k = Math.max(0, Math.min(1, (x - a) / (b - a)))
   return k * k * (3 - 2 * k)
