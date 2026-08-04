@@ -59,6 +59,26 @@ function clamp01(v: number) {
   return v < 0 ? 0 : v > 1 ? 1 : v
 }
 
+/**
+ * How far inside the ger the visitor is, 0 to 1.
+ *
+ * Felt is a very good sound barrier — a metre of it is most of why a ger is
+ * bearable in wind — so the outdoor beds have to duck as the door frame passes
+ * the camera, not merely be joined by a fire. Leaving the wind at full level
+ * inside is the audio equivalent of leaving the walls off: the room stops
+ * reading as enclosed, and the one-second flip at the threshold, which is the
+ * best beat in the piece, does not land at all.
+ *
+ * The edges are placed on the crossing itself and on the walk back out, so the
+ * transition is the door, not a fade someone chose.
+ */
+function indoors(t: number): number {
+  const enter = clamp01((t - 0.605) / 0.035)
+  const leave = 1 - clamp01((t - 0.83) / 0.04)
+  const k = Math.min(enter, leave)
+  return k * k * (3 - 2 * k)
+}
+
 export function Soundscape() {
   const entered = useJourneyStore((s) => s.entered)
   const muted = useJourneyStore((s) => s.muted)
@@ -118,8 +138,12 @@ export function Soundscape() {
       beds.push({
         gain,
         // Brisk in the afternoon, easing through sunset exactly as it does on
-        // the steppe, and nearly gone in the still air after dark.
-        at: (t) => 0.1 + 0.16 * (1 - clamp01((t - 0.1) / 0.7)),
+        // the steppe, and nearly gone in the still air after dark. Ducked hard
+        // behind felt — not to silence, because you can always hear the wind
+        // on a ger, but to the muffled version of it.
+        at: (t) =>
+          (0.1 + 0.16 * (1 - clamp01((t - 0.1) / 0.7))) *
+          (1 - indoors(t) * 0.82),
       })
     }
 
@@ -151,9 +175,14 @@ export function Soundscape() {
 
       beds.push({
         gain,
-        // In with the sunset, thinning again as the temperature drops.
-        at: (_t, elev) =>
-          0.05 * clamp01((6 - elev) / 8) * (1 - clamp01((-elev - 8) / 10)),
+        // In with the sunset, thinning again as the temperature drops — and
+        // essentially gone indoors, since a cricket in the grass outside is
+        // exactly the kind of thin high sound felt kills completely.
+        at: (t, elev) =>
+          0.05 *
+          clamp01((6 - elev) / 8) *
+          (1 - clamp01((-elev - 8) / 10)) *
+          (1 - indoors(t) * 0.96),
       })
     }
 
@@ -174,7 +203,7 @@ export function Soundscape() {
       beds.push({
         gain,
         // Dung burns soft. Audible from the threshold inward and nowhere else.
-        at: (t) => 0.14 * clamp01((t - 0.58) / 0.06) * (1 - clamp01((t - 0.8) / 0.06)),
+        at: (t) => 0.15 * indoors(t),
       })
     }
 
@@ -194,7 +223,7 @@ export function Soundscape() {
 
       beds.push({
         gain,
-        at: (t) => 0.1 * clamp01((t - 0.6) / 0.04) * (1 - clamp01((t - 0.82) / 0.05)),
+        at: (t) => 0.11 * indoors(t),
       })
     }
 

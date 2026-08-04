@@ -5,6 +5,7 @@ import { journey, useJourneyStore } from "@/hooks/use-journey"
 import { activeStop, STOPS } from "@/lib/stops"
 import { createSunState, localTimeAt, writeSunState } from "@/lib/sun-arc"
 import { useProgress } from "@react-three/drei"
+import { requestTiltPermission } from "@/components/experience/camera-rig"
 import { ToonoDial, ToonoMark } from "./toono-mark"
 import { Soundscape } from "@/components/audio/soundscape"
 
@@ -50,14 +51,8 @@ function Instruments() {
 
   return (
     <div
-      style={{
-        position: "absolute",
-        left: 28,
-        bottom: 26,
-        display: "flex",
-        gap: 26,
-        alignItems: "baseline",
-      }}
+      className="instrument-strip"
+      style={{ position: "absolute", display: "flex", alignItems: "baseline" }}
     >
       <div>
         <div className="t-micro">TIME</div>
@@ -81,15 +76,13 @@ function SoundToggle() {
 
   return (
     <button
-      className="snap"
       onClick={toggle}
       aria-pressed={!muted}
       aria-label={muted ? "Turn sound on" : "Turn sound off"}
       title={muted ? "Sound off" : "Sound on"}
+      className="snap sound-toggle"
       style={{
         position: "absolute",
-        right: 26,
-        bottom: 26,
         appearance: "none",
         background: "transparent",
         border: "none",
@@ -162,7 +155,14 @@ function Entry() {
         <button
           className="snap"
           disabled={!canEnter}
-          onClick={enter}
+          onClick={() => {
+            // One gesture, three jobs: it unlocks the AudioContext, it asks
+            // iOS for the motion sensor, and it starts the journey. All three
+            // legally require a user gesture, and asking for them separately
+            // would mean three prompts before anyone sees the steppe.
+            void requestTiltPermission()
+            enter()
+          }}
           style={{
             appearance: "none",
             background: "transparent",
@@ -359,11 +359,9 @@ export function Chrome() {
       {entered && (
         <>
           <div
+            className="dial-rail"
             style={{
               position: "absolute",
-              right: 26,
-              top: "50%",
-              transform: "translateY(-50%)",
               display: "grid",
               justifyItems: "end",
               gap: 12,

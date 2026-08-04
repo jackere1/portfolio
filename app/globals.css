@@ -237,3 +237,54 @@ html::-webkit-scrollbar {
 :root[data-phase="day"] .chrome .t-micro {
   text-shadow: 0 1px 3px oklch(0.98 0.01 90 / 0.6);
 }
+
+/* ============================================================================
+   Chrome placement. Desktop hangs the dial off the right edge at mid height;
+   a phone has no room for that and the thumb lives at the bottom, so the rail
+   moves up out of the way and the readouts tuck into the corners.
+   ========================================================================= */
+
+.dial-rail {
+  right: 26px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.instrument-strip {
+  left: 28px;
+  bottom: 26px;
+  gap: 26px;
+}
+.sound-toggle {
+  right: 26px;
+  bottom: 26px;
+  background: transparent;
+  border: none;
+  padding: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 760px) {
+  .dial-rail {
+    right: 14px;
+    top: 84px;
+    transform: none;
+  }
+  .instrument-strip {
+    left: 16px;
+    bottom: 18px;
+    gap: 18px;
+  }
+  .sound-toggle {
+    right: 10px;
+    bottom: 12px;
+    /* Comfortably past the 44px minimum, because it sits near the edge where
+       a thumb already is. */
+    padding: 12px;
+  }
+  .t-prose {
+    font-size: 24px;
+  }
+}

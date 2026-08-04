@@ -482,6 +482,11 @@ export function Vegetation() {
 
   const [near, far, hard] = useMemo(() => {
     if (quality.textureMaps.length === 0) return [40_000, 40_000, 12_000]
+    // A phone and a weak desktop used to be indistinguishable here, because
+    // the only thing this read was texture size. They are not the same:
+    // a phone has a fraction of the fill rate and a screen small enough that
+    // the missing blades are not the thing anyone notices.
+    if (quality.touch) return [70_000, 55_000, 26_000]
     return quality.textureSize >= 1024
       ? [165_000, 150_000, 68_000]
       : [80_000, 70_000, 32_000]

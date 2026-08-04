@@ -21,6 +21,39 @@ import { useReducedMotion } from "@/hooks/use-reduced-motion"
  *  re-renders anything. */
 const pointer = { x: 0, y: 0, active: false, idle: 0 }
 
+/**
+ * Device orientation, normalised the same way the pointer is.
+ *
+ * On a phone the gyro IS the pointer: it feeds the same clamped, eased offset
+ * layer, so every guarantee the rig makes still holds — the authored pose is
+ * still the only thing scroll moves, the offset is still bounded by the stop's
+ * own yaw and pitch ranges, and the horizon still cannot roll.
+ *
+ * The first reading becomes the neutral. People hold a phone at whatever angle
+ * they hold it, and treating raw beta as an absolute pitch would start most
+ * visitors staring at the ground.
+ */
+const tilt = { x: 0, y: 0, active: false, baseBeta: 0, baseGamma: 0, has: false }
+
+/** iOS 13+ gates DeviceOrientationEvent behind a user gesture. Called from the
+ *  entry click, which is already being spent on the AudioContext. */
+export async function requestTiltPermission(): Promise<boolean> {
+  const DOE = (
+    window as unknown as {
+      DeviceOrientationEvent?: {
+        requestPermission?: () => Promise<"granted" | "denied">
+      }
+    }
+  ).DeviceOrientationEvent
+  if (!DOE) return false
+  if (typeof DOE.requestPermission !== "function") return true
+  try {
+    return (await DOE.requestPermission()) === "granted"
+  } catch {
+    return false
+  }
+}
+
 function smootherstep(k: number): number {
   const c = Math.max(0, Math.min(1, k))
   return c * c * c * (c * (c * 6 - 15) + 10)
@@ -96,9 +129,40 @@ function assign(out: Pose, s: Stop): void {
   out.pitchRange = s.pitchRange
 }
 
+/**
+ * Vertical FOV that keeps a usable HORIZONTAL view in portrait.
+ *
+ * three's `fov` is vertical, so a tall narrow screen silently crops the world
+ * sideways: at 390x844 a 60 degree vertical lens leaves about 30 degrees
+ * horizontally, which turns an enormous landscape into a keyhole. Widening the
+ * vertical lens buys the horizontal back, but only up to a point — past about
+ * 78 degrees the edge distortion costs more than the view gains, and portrait
+ * is simply a narrow window.
+ *
+ * This does NOT break the constant-FOV rule. That rule is about the lens not
+ * changing DURING the journey, which would read as a zoom the visitor did not
+ * ask for. Fitting the lens to the viewport once is a different thing.
+ */
+function fovForAspect(aspect: number): number {
+  if (aspect >= 1.35) return 60
+  const k = Math.max(0, Math.min(1, (1.35 - aspect) / 0.85))
+  return 60 + k * 18
+}
+
 export function CameraRig() {
   const camera = useThree((s) => s.camera)
+  const size = useThree((s) => s.size)
   const reduced = useReducedMotion()
+
+  useEffect(() => {
+    const cam = camera as THREE.PerspectiveCamera
+    if (!cam.isPerspectiveCamera) return
+    const want = fovForAspect(size.width / Math.max(1, size.height))
+    if (Math.abs(cam.fov - want) > 0.01) {
+      cam.fov = want
+      cam.updateProjectionMatrix()
+    }
+  }, [camera, size.width, size.height])
 
   const pose = useMemo<Pose>(
     () => ({
@@ -125,11 +189,34 @@ export function CameraRig() {
     const onLeave = () => {
       pointer.active = false
     }
+    const onTilt = (e: DeviceOrientationEvent) => {
+      if (e.beta === null || e.gamma === null) return
+      // Portrait: gamma is the left-right roll of the handset, beta the
+      // front-back. In landscape the two swap and one of them inverts.
+      const landscape = Math.abs(window.orientation ?? 0) === 90
+      const flip = (window.orientation ?? 0) === -90 ? -1 : 1
+      const rawYaw = landscape ? e.beta * flip : e.gamma
+      const rawPitch = landscape ? -e.gamma * flip : e.beta
+
+      if (!tilt.has) {
+        tilt.baseGamma = rawYaw
+        tilt.baseBeta = rawPitch
+        tilt.has = true
+      }
+      // Roughly 30 degrees of handset movement covers the full allowance.
+      tilt.x = Math.max(-1, Math.min(1, (rawYaw - tilt.baseGamma) / 30))
+      tilt.y = Math.max(-1, Math.min(1, (rawPitch - tilt.baseBeta) / 30))
+      tilt.active = true
+      pointer.idle = 0
+    }
+
     window.addEventListener("pointermove", onMove, { passive: true })
     window.addEventListener("pointerleave", onLeave)
+    window.addEventListener("deviceorientation", onTilt, { passive: true })
     return () => {
       window.removeEventListener("pointermove", onMove)
       window.removeEventListener("pointerleave", onLeave)
+      window.removeEventListener("deviceorientation", onTilt)
     }
   }, [])
 
@@ -142,11 +229,16 @@ export function CameraRig() {
 
     // --- free look: clamped, eased, and it gives the frame back -----------
     pointer.idle += dt
-    const wantYaw = reduced ? 0 : pointer.x * pose.yawRange
-    const wantPitch = reduced ? 0 : -pointer.y * pose.pitchRange
+    // Gyro wins where it exists, because a phone has no pointer to fall back
+    // on and a stale pointer reading would fight it.
+    const lookX = tilt.active ? tilt.x : pointer.x
+    const lookY = tilt.active ? tilt.y : pointer.y
+    const wantYaw = reduced ? 0 : lookX * pose.yawRange
+    const wantPitch = reduced ? 0 : -lookY * pose.pitchRange
     // After a second and a half of stillness the view returns to the
-    // composition the route authored.
-    const recenter = pointer.idle > 1.5 ? 0 : 1
+    // composition the route authored — but a held phone is never truly still,
+    // so tilt does not expire.
+    const recenter = tilt.active || pointer.idle <= 1.5 ? 1 : 0
     const ease = 1 - Math.exp(-dt * 6)
     look.current.yaw += (wantYaw * recenter - look.current.yaw) * ease
     look.current.pitch += (wantPitch * recenter - look.current.pitch) * ease

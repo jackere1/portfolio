@@ -243,6 +243,23 @@ These each cost real time to find. They are not stylistic.
 - **Zero re-renders while travelling, zero allocation in `useFrame`.** Mutate through refs
   and preallocated objects.
 - **Two speeds.** The world is damped and soft; pointer and keyboard responses are instant.
+- **Phones get the same world, simplified — and the gyro IS the pointer.** Device orientation
+  feeds the same clamped, eased free-look layer, so every guarantee holds: scroll still moves
+  the authored pose and nothing else, the offset is still bounded by the stop's own ranges, and
+  the horizon still cannot roll. The FIRST reading becomes the neutral, because people hold a
+  phone at whatever angle they hold it and treating raw beta as absolute pitch starts most
+  visitors staring at the ground. iOS gates the sensor behind a gesture, so the permission is
+  requested from the entry click — the same click already spending itself on the AudioContext.
+- **`camera.fov` is VERTICAL, which portrait punishes.** At 390x844 a 60° vertical lens leaves
+  about 30° horizontally and an enormous landscape reads as a keyhole. `fovForAspect` widens
+  the vertical lens on tall viewports, capped at 78° where edge distortion starts costing more
+  than the view gains. This does NOT break the constant-FOV rule — that rule is about the lens
+  not changing DURING the journey, which would read as a zoom nobody asked for. Fitting it to
+  the viewport once is a different thing.
+- **Sound obeys the felt.** `indoors(t)` in the soundscape ducks wind by 82% and crickets by
+  96% across the threshold, and the fire and room beds key off the SAME number. Leaving the
+  outdoor beds at full level inside is the audio equivalent of leaving the walls off, and it
+  kills the one-second flip at the door, which is the best beat in the piece.
 - **The camera moves only while the user scrolls.** Constant FOV, zero roll, stable horizon.
   That is the whole anti-nausea contract.
 - **Authenticity is not decoration.** The solar panel, dish, motorcycle and dung stack stay
@@ -381,11 +398,6 @@ there.
 **The herd comes home along the ground it uses, not through the front yard.** The flock returns
 via a waypoint north of the camp. A straight interpolation from pasture to corral walked all
 120 animals through the middle of the camp and past the camera.
-
-**Deliberately still open:** phones and any coarse pointer route to the flat tier, so no touch
-device ever sees the 3D world. That was a v1 cut made when the scene's cost was unknown; it now
-renders in about a millisecond, so the decision is worth revisiting — but it is a decision, not
-an oversight, and it should be made rather than drifted into.
 
 **Still missing:** nothing on the audit's MUST FIX list. What remains is polish, plus two
 things worth knowing.
