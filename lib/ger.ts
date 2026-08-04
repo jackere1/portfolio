@@ -352,9 +352,13 @@ export function generateGer(params: GerParams): GerBuild {
   // roof drops (radius - r) * tan(pitch) from the crown, so anything placed at
   // the crown's height floats above the felt it is supposed to be lying on.
   const urkhR = toonoRadius * 1.95
+  // Lifted by the roll's own radius. Sitting the CENTRE on the roof surface
+  // buries the lower half of it inside the ger, where it reads from the seat
+  // as a dark slab hanging out of the ceiling.
+  const urkhRollR = toonoRadius * 1.72 * 0.17
   const urkhFolded = new THREE.Vector3(
     0,
-    wallHeight + (radius - urkhR) * Math.tan(pitch) + 0.035,
+    wallHeight + (radius - urkhR) * Math.tan(pitch) + urkhRollR + 0.03,
     -urkhR
   )
   const urkhDrawn = new THREE.Vector3(0, apexY + 0.035, 0)

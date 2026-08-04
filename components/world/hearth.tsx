@@ -111,6 +111,7 @@ export function Hearth({
   const smokeRef = useRef<THREE.ShaderMaterial>(null)
   const fireDoorRef = useRef<THREE.Mesh>(null)
   const spillRef = useRef<THREE.PointLight>(null)
+  const crownLightRef = useRef<THREE.PointLight>(null)
   const clock = useRef(0)
 
   const smokeUniforms = useMemo(
@@ -137,7 +138,7 @@ export function Hearth({
     const f = reduced ? 0.85 : flicker(clock.current)
 
     if (lightRef.current) {
-      lightRef.current.intensity = night * 3.0 * f
+      lightRef.current.intensity = night * 4.6 * f
     }
     // Emissive intensity is pushed above 1 so that bloom finds it. Below 1 it
     // is just a slightly orange polygon and the whole effect is gone.
@@ -146,6 +147,10 @@ export function Hearth({
       m.emissiveIntensity = night * 1.05 * f
     }
     if (spillRef.current) spillRef.current.intensity = night * 1.5 * f
+    // Fades as the urkh closes over it, which is the physical cause.
+    if (crownLightRef.current) {
+      crownLightRef.current.intensity = (1 - sun.urkh) * 2.4
+    }
     if (fireDoorRef.current) {
       const m = fireDoorRef.current.material as THREE.MeshStandardMaterial
       m.emissiveIntensity = night * 2.4 * f
@@ -223,6 +228,18 @@ export function Hearth({
         ref={spillRef}
         position={[0, 0.18, 3.0]}
         color="#ff9a44"
+        distance={7}
+        decay={2}
+        intensity={0}
+      />
+
+      {/* Skylight down the crown. Until the urkh is drawn, the opening is a
+          second and much cooler source, and without it the room reads as a
+          cave lit by a single bulb rather than as a tent at dusk. */}
+      <pointLight
+        ref={crownLightRef}
+        position={[0, toonoY - 0.35, 0]}
+        color="#9fb4d8"
         distance={7}
         decay={2}
         intensity={0}

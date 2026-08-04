@@ -173,50 +173,13 @@ export function Ger({
 }
 
 /**
- * The urkh (өрх) — the square of felt that covers the toono.
- *
- * It lies folded back over the north slope through the day to let the sun in,
- * and is drawn across the crown after dark. That is ordinary daily practice,
- * and it is also the reason this site's journey ends outdoors: a ger whose
- * crown is left open to the stars reads as a poor one.
- */
-function Urkh({ build }: { build: ReturnType<typeof generateGer> }) {
-  const ref = useRef<THREE.Mesh>(null)
-  const sun = useMemo(() => createSunState(), [])
-  const { size, folded, drawn } = build.urkh
-
-  useFrame(() => {
-    writeSunState(sun, journey.t)
-    const m = ref.current
-    if (!m) return
-    const k = sun.urkh
-    m.position.lerpVectors(folded, drawn, k)
-    // Folded double over the roof by day; flat across the crown by night.
-    m.scale.set(1, 1, 0.5 + 0.5 * k)
-    m.rotation.x = -Math.PI / 2 + (1 - k) * 0.36
-  })
-
-  return (
-    <mesh ref={ref} castShadow>
-      <planeGeometry args={[size, size]} />
-      <meshStandardMaterial
-        color="#6e6455"
-        roughness={0.97}
-        metalness={0}
-        side={THREE.DoubleSide}
-      />
-    </mesh>
-  )
-}
-
-/**
  * The door leaves, hinged.
  *
  * A summer ger very often stands with its wooden door hooked open and only the
  * felt flap hanging — the door faces south, and the afternoon sun comes
- * straight in. It is shut when the cold does. Both states are driven off the
- * same sun elevation that draws the urkh and rolls the khayaa down, so the
- * whole house closes as one thing while the guest is inside.
+ * straight in. It is shut when the cold does, on the same sun elevation that
+ * draws the urkh and rolls the khayaa down, so the whole house closes as one
+ * thing while the guest is inside.
  */
 function DoorLeaves({ build }: { build: ReturnType<typeof generateGer> }) {
   const left = useRef<THREE.Group>(null)
@@ -257,6 +220,86 @@ function DoorLeaves({ build }: { build: ReturnType<typeof generateGer> }) {
         </group>
       ))}
     </group>
+  )
+}
+
+/**
+ * The urkh (өрх) — the felt over the crown.
+ *
+ * Two states, and they are genuinely different SHAPES, which is why one mesh
+ * could never do it. Folded back it is a ROLL of felt lying along the north
+ * roof slope with its corner ropes running down the cover; drawn, it is a flat
+ * square across the crown. A single quad doing both reads as a plank in one
+ * state and a lid in the other.
+ *
+ * It is drawn as it gets dark. That is ordinary daily practice, and it is also
+ * why this site's journey ends outdoors: a ger whose crown is left open to the
+ * stars reads as a poor one.
+ */
+function Urkh({ build }: { build: ReturnType<typeof generateGer> }) {
+  const rollRef = useRef<THREE.Mesh>(null)
+  const flatRef = useRef<THREE.Mesh>(null)
+  const sun = useMemo(() => createSunState(), [])
+  const { size, folded, drawn } = build.urkh
+
+  useFrame(() => {
+    writeSunState(sun, journey.t)
+    const k = sun.urkh
+
+    const roll = rollRef.current
+    if (roll) {
+      roll.visible = k < 0.97
+      // The roll shrinks and slides toward the crown as it is pulled across.
+      roll.position.set(
+        folded.x + (drawn.x - folded.x) * k * 0.7,
+        folded.y + (drawn.y - folded.y) * k * 0.7,
+        folded.z + (drawn.z - folded.z) * k * 0.7
+      )
+      roll.scale.set(1, 1 - k * 0.75, 1 - k * 0.75)
+    }
+
+    const flat = flatRef.current
+    if (flat) {
+      flat.visible = k > 0.03
+      flat.position.copy(drawn)
+      // Unrolls across the crown rather than fading in. The plane lies in XY
+      // and is laid flat by a -90 degree turn about X, so its LOCAL Y is the
+      // direction it travels across the opening — scaling local Z only made it
+      // thinner in a direction that has no thickness, and the crown was capped
+      // the instant the urkh began to move.
+      flat.scale.set(1, Math.max(0.02, k), 1)
+    }
+  })
+
+  return (
+    <>
+      {/* Folded: a roll of felt on the north slope. */}
+      <mesh
+        ref={rollRef}
+        position={folded}
+        rotation={[0, 0, Math.PI / 2]}
+        castShadow
+      >
+        <cylinderGeometry args={[size * 0.17, size * 0.17, size * 0.95, 10]} />
+        <meshStandardMaterial color="#6e6455" roughness={0.97} metalness={0} />
+      </mesh>
+
+      {/* Drawn: flat across the crown. */}
+      <mesh
+        ref={flatRef}
+        position={drawn}
+        rotation={[-Math.PI / 2, 0, 0]}
+        castShadow
+      >
+        <planeGeometry args={[size, size]} />
+        <meshStandardMaterial
+          color="#6e6455"
+          roughness={0.97}
+          metalness={0}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+    </>
   )
 }
 

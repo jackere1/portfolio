@@ -153,14 +153,25 @@ export const STOPS: readonly Stop[] = [
     // at the LAST BLUE — there is still light in the sky, and there must be.
     // From (-0.95, -0.55) the crown centre at (0, 2.264, 0) bears 120 and sits
     // 52 degrees up, which frames it inside a 60 degree lens.
-    x: -0.95,
-    z: -0.55,
+    // Seated further back on the west side, which lets the WHOLE crown fit.
+    // From 1.1 m off the axis the ring subtends 43 degrees — most of a 60
+    // degree lens — so it was always clipped. At 1.77 m it subtends 34, and
+    // the frame carries the crown, the roof and the khoimor below it at once.
+    // The stove pipe falls a few degrees off the ring's centre from here
+    // rather than bisecting the shot.
+    x: -1.55,
+    z: -0.85,
     eye: 0.85,
-    bearing: 120,
-    pitch: 52,
+    bearing: 119,
+    // The crown sits 52 degrees up from this seat, so a 52 degree pitch puts
+    // it dead centre and fills the rest of the frame with roof underside —
+    // none of the room the guest was just led into is visible at all. Aiming
+    // lower carries the crown in the upper third and the khoimor below it,
+    // which is what someone sitting down actually sees.
+    pitch: 33,
     yawRange: 60,
     // Kept under (90 - pitch) so free look can never tip past vertical.
-    pitchRange: 30,
+    pitchRange: 34,
   },
   {
     id: "back-out",
