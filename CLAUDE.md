@@ -150,43 +150,50 @@ These each cost real time to find. They are not stylistic.
    and throws.
 10. **The Milky Way's structure must be smooth noise.** Hashing `floor(d * k)` directly
     quantises the sky into visible blocks a few degrees across.
-11. **The hero patch and the skirt must not overlap.** They were once stacked, both displaced
+11. **Ground normals come from the HEIGHT FUNCTION, never from `computeVertexNormals`.** That
+    helper averages the faces a vertex belongs to, so the answer depends on triangle SHAPE —
+    and the far skirt's cells near the join are extreme slivers, about half a metre radially by
+    four metres along the ring. Over the same surface that produced measurably different
+    normals from the hero patch's square cells, and the two shaded differently: a dark band lay
+    along the horizon exactly where one mesh handed over to the other. Sampling `normalAt`
+    makes both agree by construction, whatever the tessellation.
+12. **The hero patch and the skirt must not overlap.** They were once stacked, both displaced
     by the same height function and kept apart by `polygonOffset`. Polygon offset is
     depth-slope dependent, and a 1.65 m eye sees nearly everything at a grazing angle, so the
     skirt punched through in shifting patches that read as the ground texture randomly
     changing while you scrolled.
-12. **Grass wraps toroidally; it does not snap.** Snapping the whole field to a grid teleports
+13. **Grass wraps toroidally; it does not snap.** Snapping the whole field to a grid teleports
     every blade at once and re-samples the density mask under it, so blades pop in and out
     mid-travel. Wrapping means a blade only relocates at the tile boundary, past the fade,
     where it is already invisible.
-13. **Density culling is per TUFT (`iClump`), never per blade.** Testing per blade shreds
+14. **Density culling is per TUFT (`iClump`), never per blade.** Testing per blade shreds
     every clump into scattered single stalks, which destroys the tussocks entirely — a
     tussock's whole character is that it is a dense standing clump.
-14. **Ambient intensity is NOT where the light arc lives.** `SKY_COLOR` and `GROUND_COLOR`
+15. **Ambient intensity is NOT where the light arc lives.** `SKY_COLOR` and `GROUND_COLOR`
     already fall by more than an order of magnitude across the journey, so a small ambient
     intensity on top dims everything twice and turns stops 03–05 into black silhouettes
     with every prop invisible. The intensity RISES as the sun crosses the horizon, because
     that is the moment the sky stops being a fill light and becomes the key light.
-15. **The cloud field is defined ONCE, in `lib/clouds.ts`.** The sky draws the deck and the
+16. **The cloud field is defined ONCE, in `lib/clouds.ts`.** The sky draws the deck and the
     ground is shadowed by it, and if those two ever sample different fields the shadows fall
     in the wrong places — which is worse than no shadows, because the eye reads a cloud and
     then reads a shadow that does not belong to it. A view ray's `xz/y` IS the deck coordinate,
     which is why neither side has to know about the other.
-16. **The cloud deck is projected onto a flat ceiling, not raymarched.** At this scale the
+17. **The cloud deck is projected onto a flat ceiling, not raymarched.** At this scale the
     difference is invisible and the cost is one fbm instead of a loop. Two things make it read:
     the deck must CONVERGE at the horizon, which is what a ceiling over a huge plain looks
     like, and it must carry THICKNESS — bright where it is deep, dark and translucent where it
     thins — because presence alone is grey paint. Watch the projection scale: too small a
     factor and the entire visible sky samples one value of the field, so there is no cloud,
     only a switch between overcast and nothing.
-17. **Golden hour's colour is in the HEMISPHERE light, not the sun.** At +3 degrees a flat
+18. **Golden hour's colour is in the HEMISPHERE light, not the sun.** At +3 degrees a flat
     ground receives almost nothing from a direct sun and diffuse sky genuinely dominates —
     which is correct physics and looked stone cold until `SKY_COLOR` itself went warm there.
-18. **The crown is the SUN and its wood is red-orange, never blue.** Mongolian ger woodwork is
+19. **The crown is the SUN and its wood is red-orange, never blue.** Mongolian ger woodwork is
     red and reddish-yellow; the toono in particular is coloured for the sun, with the uni as
     its rays. It should be the warmest wood in the ger. (An earlier version painted the spokes
     khadag blue, which inverted the symbolism.)
-19. **The ger opens and closes across the day, and all three parts must actually be wired.**
+20. **The ger opens and closes across the day, and all three parts must actually be wired.**
     The urkh is folded back over the north roof slope by day and drawn across the crown after
     dark; the khayaa (the wall skirt) is rolled UP through the heat — which is why the orange
     lattice shows at the base all afternoon — and rolled DOWN when the cold comes; the door
@@ -195,9 +202,9 @@ These each cost real time to find. They are not stylistic.
     and stop 08 walks back out into that. **Watch for half-wired versions of this**: the
     khayaa value existed in the sun state and in this file for a while before anything in the
     ger actually read it, so the brief claimed a seal the render never performed.
-20. **The bagana stand ON the toono ring** (x = ±`toonoRadius`), not inside it. And you must
+21. **The bagana stand ON the toono ring** (x = ±`toonoRadius`), not inside it. And you must
     never walk between them — the interior camera path passes outside the west one.
-21. **Nothing may fill the toono opening.** The crown glow is a RING at the rim. It was once
+22. **Nothing may fill the toono opening.** The crown glow is a RING at the rim. It was once
     a filled disc, which is a lid on the only hole the sky comes through, and stop 07 is
     that hole. The galactic plane in `sky.tsx` is also aimed so the band genuinely falls
     inside what the crown frames from the seat — check both if you move either.

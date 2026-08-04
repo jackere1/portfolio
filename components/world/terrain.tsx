@@ -4,7 +4,7 @@ import { useMemo, useRef } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import { usePbrMaterial } from "@/lib/textures"
-import { heightAt, slopeAt } from "@/lib/heightfield"
+import { heightAt, normalAt, slopeAt } from "@/lib/heightfield"
 import { rutDistance } from "@/lib/terrain-maps"
 import { journey } from "@/hooks/use-journey"
 import { createSunState, writeSunState } from "@/lib/sun-arc"
@@ -127,8 +127,35 @@ function buildHero(): THREE.BufferGeometry {
   }
 
   geo.setAttribute("color", new THREE.BufferAttribute(colors, 3))
-  geo.computeVertexNormals()
+  writeAnalyticNormals(geo)
   return geo
+}
+
+/**
+ * Normals taken from the height function itself rather than from the mesh.
+ *
+ * This is not a refinement, it is a correctness fix. computeVertexNormals
+ * averages the faces a vertex belongs to, so the answer depends on the shape of
+ * the triangles — and the far skirt's cells near the join are extreme slivers,
+ * roughly half a metre radially by four metres along the ring. That produced
+ * measurably different normals from the hero patch's square cells over the SAME
+ * surface, and the two shaded differently: a dark band lay along the horizon
+ * exactly where one mesh handed over to the other.
+ *
+ * Sampling the heightfield gives the true surface normal at every vertex, so
+ * both meshes agree by construction no matter how they are tessellated.
+ */
+function writeAnalyticNormals(geo: THREE.BufferGeometry): void {
+  const pos = geo.attributes.position as THREE.BufferAttribute
+  const normals = new Float32Array(pos.count * 3)
+  const n = { x: 0, y: 1, z: 0 }
+  for (let i = 0; i < pos.count; i++) {
+    normalAt(pos.getX(i), pos.getZ(i), n)
+    normals[i * 3] = n.x
+    normals[i * 3 + 1] = n.y
+    normals[i * 3 + 2] = n.z
+  }
+  geo.setAttribute("normal", new THREE.BufferAttribute(normals, 3))
 }
 
 /** A point on the perimeter of an axis-aligned square of half-extent `e`,
@@ -203,7 +230,7 @@ function buildSkirt(): THREE.BufferGeometry {
   geo.setAttribute("uv", new THREE.BufferAttribute(uvs, 2))
   geo.setAttribute("color", new THREE.BufferAttribute(colors, 3))
   geo.setIndex(indices)
-  geo.computeVertexNormals()
+  writeAnalyticNormals(geo)
   return geo
 }
 
