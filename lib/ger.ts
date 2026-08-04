@@ -9,7 +9,7 @@
 // Everything is seeded and clamped, so every ger is identical on every load.
 
 import * as THREE from "three"
-import { makeRng, seededDrift } from "./prng"
+import { hashSeed, makeRng, seededDrift } from "./prng"
 import {
   DOOR_HEIGHT,
   DOOR_WIDTH,
@@ -83,14 +83,61 @@ function fabricSag(theta: number): number {
   )
 }
 
-/** Weathering: canvas is dust-stained from the ground line up, and it is the
- *  gradient — not the base colour — that makes it read as owned rather than new. */
-function coverColor(y: number, wallHeight: number, out: THREE.Color): void {
-  const clean = new THREE.Color(0.5, 0.47, 0.41)
-  const dusty = new THREE.Color(0.3, 0.26, 0.2)
+const COVER_CLEAN = new THREE.Color(0.5, 0.47, 0.41)
+const COVER_DUSTY = new THREE.Color(0.3, 0.26, 0.2)
+
+/** Seeded 2D value noise for the cover's weathering. */
+const coverRngSeed = hashSeed("ger-cover-weather")
+function coverHash(ix: number, iz: number): number {
+  let h = coverRngSeed ^ Math.imul(ix | 0, 0x27d4eb2d)
+  h = Math.imul(h ^ (iz | 0), 0x165667b1)
+  h = Math.imul(h ^ (h >>> 15), 0x2545f491)
+  h ^= h >>> 13
+  return (h >>> 0) / 4294967296
+}
+function coverNoise(x: number, y: number): number {
+  const x0 = Math.floor(x)
+  const y0 = Math.floor(y)
+  const fx = x - x0
+  const fy = y - y0
+  const sx = fx * fx * (3 - 2 * fx)
+  const sy = fy * fy * (3 - 2 * fy)
+  const a = coverHash(x0, y0) + (coverHash(x0 + 1, y0) - coverHash(x0, y0)) * sx
+  const b =
+    coverHash(x0, y0 + 1) +
+    (coverHash(x0 + 1, y0 + 1) - coverHash(x0, y0 + 1)) * sx
+  return a + (b - a) * sy
+}
+
+/**
+ * Weathering.
+ *
+ * A ger cover is the largest and brightest surface in most frames, and a flat
+ * colour on it is the loudest "this is a render" signal in the scene. Three
+ * things fix that and none of them is a texture file: the dust stain climbing
+ * from the ground line, a slow blotching from rain and sun that runs at a
+ * different scale to the stain, and a faint horizontal banding where the felt
+ * is lapped and stitched.
+ */
+function coverColor(
+  theta: number,
+  y: number,
+  wallHeight: number,
+  out: THREE.Color
+): void {
   // Stain climbs roughly a third of the wall, fading out.
   const k = Math.max(0, Math.min(1, (y - 0.02) / (wallHeight * 0.55)))
-  out.copy(dusty).lerp(clean, k * k * (3 - 2 * k))
+  out.copy(COVER_DUSTY).lerp(COVER_CLEAN, k * k * (3 - 2 * k))
+
+  // Weathering blotches, in cover-surface coordinates so they wrap.
+  const u = (theta / Math.PI) * 3.4
+  const blotch =
+    coverNoise(u * 2.1, y * 2.6) * 0.62 + coverNoise(u * 6.3, y * 7.1) * 0.38
+  out.multiplyScalar(0.86 + blotch * 0.28)
+
+  // The lap of the felt: a faint band every couple of hand-widths.
+  const lap = 0.97 + 0.03 * Math.sin(y * 26.0)
+  out.multiplyScalar(lap)
 }
 
 function applyCoverShaping(
@@ -112,7 +159,7 @@ function applyCoverShaping(
       pos.setX(i, x * s)
       pos.setZ(i, z * s)
     }
-    coverColor(y, wallHeight, c)
+    coverColor(theta, y, wallHeight, c)
     colors[i * 3] = c.r
     colors[i * 3 + 1] = c.g
     colors[i * 3 + 2] = c.b
@@ -297,11 +344,14 @@ export function generateGer(params: GerParams): GerBuild {
   // The urkh (өрх): the square of felt that covers the crown. Folded back over
   // the north slope through the day to let the sun in, drawn across after dark.
   // Its corner ropes run down over the cover to the ground.
-  const urkhSize = toonoRadius * 2.1
+  // Kept inside the roof's silhouette: a flat square laid on a CONE overhangs
+  // at its corners, and a felt flap jutting past the roof edge reads as a
+  // plank nailed to the side rather than as cloth folded back.
+  const urkhSize = toonoRadius * 1.72
   // Folded back onto the NORTH roof slope, and actually sitting on it: the
   // roof drops (radius - r) * tan(pitch) from the crown, so anything placed at
   // the crown's height floats above the felt it is supposed to be lying on.
-  const urkhR = toonoRadius * 2.35
+  const urkhR = toonoRadius * 1.95
   const urkhFolded = new THREE.Vector3(
     0,
     wallHeight + (radius - urkhR) * Math.tan(pitch) + 0.035,
