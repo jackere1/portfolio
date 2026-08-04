@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { journey, useJourneyStore } from "@/hooks/use-journey"
 import { activeStop, STOPS } from "@/lib/stops"
 import { createSunState, localTimeAt, writeSunState } from "@/lib/sun-arc"
+import { useProgress } from "@react-three/drei"
 import { ToonoDial, ToonoMark } from "./toono-mark"
 import { Soundscape } from "@/components/audio/soundscape"
 
@@ -129,6 +130,14 @@ function Entry() {
   const ready = useJourneyStore((s) => s.ready)
   const enter = useJourneyStore((s) => s.enter)
 
+  // Real progress, from the loading manager that the textures and the star map
+  // already go through. The button used to enable as soon as the scroll driver
+  // was up, which on a slow connection is a control that looks ready, does
+  // nothing useful, and explains none of it.
+  const { active, progress } = useProgress()
+  const loading = active && progress < 100
+  const canEnter = ready && !loading
+
   if (entered) return null
 
   return (
@@ -152,7 +161,7 @@ function Entry() {
 
         <button
           className="snap"
-          disabled={!ready}
+          disabled={!canEnter}
           onClick={enter}
           style={{
             appearance: "none",
@@ -160,16 +169,40 @@ function Entry() {
             border: "1px solid var(--ember)",
             color: "var(--ember)",
             padding: "13px 30px",
-            cursor: ready ? "pointer" : "wait",
+            cursor: canEnter ? "pointer" : "wait",
             fontFamily: "var(--font-sans)",
             fontWeight: 500,
             fontSize: 12,
             letterSpacing: "0.26em",
             textTransform: "uppercase",
-            opacity: ready ? 1 : 0.4,
+            opacity: canEnter ? 1 : 0.45,
+            position: "relative",
+            overflow: "hidden",
           }}
         >
-          {ready ? "Enter as a guest" : "Loading"}
+          {/* The fill IS the progress bar. A separate bar would be a second
+              thing to look at for the same fact. */}
+          {loading && (
+            <span
+              aria-hidden
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: `${Math.round(progress)}%`,
+                background: "var(--ember)",
+                opacity: 0.16,
+              }}
+            />
+          )}
+          <span style={{ position: "relative" }}>
+            {canEnter
+              ? "Enter as a guest"
+              : loading
+                ? `Loading · ${Math.round(progress)}%`
+                : "Loading"}
+          </span>
         </button>
 
         <div style={{ display: "grid", justifyItems: "center", gap: 9 }}>
@@ -235,6 +268,44 @@ function ScrollHint() {
         />
       </svg>
     </div>
+  )
+}
+
+/** At the last stop there is nowhere further to scroll, and nothing saying so.
+ *  This is the only place in the piece that offers to take you back. */
+function BeginAgain() {
+  const stopId = useJourneyStore((s) => s.stopId)
+  if (stopId !== STOPS[STOPS.length - 1].id) return null
+
+  return (
+    <button
+      className="snap"
+      onClick={() => {
+        const w = window as unknown as {
+          __ailchin?: { seek: (t: number) => void }
+        }
+        w.__ailchin?.seek(0)
+      }}
+      style={{
+        position: "absolute",
+        left: "50%",
+        bottom: 30,
+        transform: "translateX(-50%)",
+        appearance: "none",
+        background: "transparent",
+        border: "1px solid var(--stone)",
+        color: "var(--ink-dim)",
+        padding: "10px 22px",
+        cursor: "pointer",
+        fontFamily: "var(--font-sans)",
+        fontWeight: 500,
+        fontSize: 10,
+        letterSpacing: "0.26em",
+        textTransform: "uppercase",
+      }}
+    >
+      Ride back
+    </button>
   )
 }
 
@@ -312,6 +383,7 @@ export function Chrome() {
           <Instruments />
           <SoundToggle />
           <ScrollHint />
+          <BeginAgain />
         </>
       )}
 

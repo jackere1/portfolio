@@ -114,6 +114,12 @@ expected to print **zero** errors — not "fewer". If it prints any, you added t
   and arrow-key navigation of the route. The entry overlay sits on the night ground whatever
   the sky is doing, so it carries the night inks explicitly — inheriting the daylight phase
   put dark text on a black screen.
+- The entry button's **fill is the progress bar** — a separate bar would be a second thing to
+  look at for the same fact — and it is driven by the real loading manager the textures and the
+  star map already go through. It used to enable as soon as the scroll driver was up, which on
+  a slow connection is a control that looks ready, does nothing, and explains none of it.
+- **"Ride back" is the only way out.** At the last stop there is nowhere further to scroll and
+  nothing that says so.
 - Sound is **muted-able and remembers**: playing audio with no off switch is a real failure,
   and being asked to mute the same site twice is a small rudeness. The toggle rides the master
   gain rather than tearing the graph down, so unmuting resumes the same beds at the same phase.
@@ -368,6 +374,11 @@ there.
 **The herd comes home along the ground it uses, not through the front yard.** The flock returns
 via a waypoint north of the camp. A straight interpolation from pasture to corral walked all
 120 animals through the middle of the camp and past the camera.
+
+**Deliberately still open:** phones and any coarse pointer route to the flat tier, so no touch
+device ever sees the 3D world. That was a v1 cut made when the scene's cost was unknown; it now
+renders in about a millisecond, so the decision is worth revisiting — but it is a decision, not
+an oversight, and it should be made rather than drifted into.
 
 **Still missing:** nothing on the audit's MUST FIX list. What remains is polish, plus two
 things worth knowing.
