@@ -48,6 +48,13 @@ const OLIVE_TINT = new THREE.Color(0.27, 0.27, 0.17) // duller, in the hollows
 const SOIL_TINT = new THREE.Color(0.36, 0.3, 0.22) // pale bare earth
 const DUNG_TINT = new THREE.Color(0.24, 0.21, 0.17) // trampled, flecked
 const RUT_TINT = new THREE.Color(0.66, 0.58, 0.44) // hard-packed, pale, dusty
+const ROCK_TINT = new THREE.Color(0.3, 0.29, 0.28) // exposed rock on the ridges
+const SCREE_TINT = new THREE.Color(0.46, 0.45, 0.44) // pale broken stone up high
+/** Distant ranges do not just get darker, they get BLUER and lower-contrast.
+ *  Baking it into vertex colour is legitimate here because the mountains never
+ *  move, and it does what a single fog colour cannot: the far ridges separate
+ *  from the near ones into steps instead of stacking into one flat mass. */
+const HAZE_TINT = new THREE.Color(0.42, 0.5, 0.66)
 
 function smoothstep(a: number, b: number, x: number): number {
   const k = Math.max(0, Math.min(1, (x - a) / (b - a)))
@@ -55,9 +62,25 @@ function smoothstep(a: number, b: number, x: number): number {
 }
 
 /** The single colouring rule, used by both meshes so they cannot disagree. */
-function groundColor(x: number, z: number, out: THREE.Color): void {
+function groundColor(
+  x: number,
+  z: number,
+  y: number,
+  out: THREE.Color
+): void {
   const d = Math.hypot(x, z)
-  out.copy(GRASS_TINT).lerp(OLIVE_TINT, smoothstep(0.05, 0.4, slopeAt(x, z)))
+  const slope = slopeAt(x, z)
+  out.copy(GRASS_TINT).lerp(OLIVE_TINT, smoothstep(0.05, 0.4, slope))
+
+  // --- the ranges -----------------------------------------------------------
+  // Grass gives out as the ground rises and steepens: rock on the shoulders,
+  // broken pale stone along the crests. Without this a mountain is a green
+  // slab, which is the one thing a Mongolian range never looks like.
+  const alp = smoothstep(35, 150, y)
+  if (alp > 0) {
+    const rock = ROCK_TINT.clone().lerp(SCREE_TINT, smoothstep(120, 300, y))
+    out.lerp(rock, alp * (0.45 + 0.55 * smoothstep(0.15, 0.55, slope)))
+  }
   const halo = smoothstep(BUUTS.inner, BUUTS.outer, d)
   if (halo < 1) {
     const soil = SOIL_TINT.clone().lerp(DUNG_TINT, 1 - smoothstep(2, 12, d))
@@ -69,6 +92,11 @@ function groundColor(x: number, z: number, out: THREE.Color): void {
   // wider than the mesh's 1.25 m vertex spacing or it is smeared to nothing.
   const rut = smoothstep(0.3, 2.4, rutDistance(x, z))
   if (rut < 1) out.lerp(RUT_TINT, (1 - rut) * 0.9)
+
+  // Aerial perspective, baked. Beyond a kilometre the air itself is most of
+  // what you are looking at.
+  const haze = smoothstep(900, 6000, d)
+  if (haze > 0) out.lerp(HAZE_TINT, haze * 0.82)
 }
 
 function buildHero(): THREE.BufferGeometry {
@@ -88,10 +116,11 @@ function buildHero(): THREE.BufferGeometry {
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i)
     const z = pos.getZ(i)
-    pos.setY(i, heightAt(x, z))
+    const y = heightAt(x, z)
+    pos.setY(i, y)
     uv.setXY(i, x / TILE, z / TILE)
 
-    groundColor(x, z, c)
+    groundColor(x, z, y, c)
     colors[i * 3] = c.r
     colors[i * 3 + 1] = c.g
     colors[i * 3 + 2] = c.b
@@ -145,12 +174,13 @@ function buildSkirt(): THREE.BufferGeometry {
     for (let i = 0; i <= COLS; i++) {
       const [x, z] = squarePerimeter(e, (i % COLS) / COLS)
       const o = j * (COLS + 1) + i
+      const y = heightAt(x, z)
       positions[o * 3] = x
-      positions[o * 3 + 1] = heightAt(x, z)
+      positions[o * 3 + 1] = y
       positions[o * 3 + 2] = z
       uvs[o * 2] = x / TILE
       uvs[o * 2 + 1] = z / TILE
-      groundColor(x, z, c)
+      groundColor(x, z, y, c)
       colors[o * 3] = c.r
       colors[o * 3 + 1] = c.g
       colors[o * 3 + 2] = c.b
