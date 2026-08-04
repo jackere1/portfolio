@@ -82,8 +82,11 @@ expected to print **zero** errors — not "fewer". If it prints any, you added t
 
 ## Architecture
 
-`app/page.tsx` routes on `useGpuTier()`: the flat tier (phones, weak GPUs,
-`prefers-reduced-motion`) gets `FlatTier`; everyone else gets `Experience`.
+`app/page.tsx` routes on `useGpuTier()`. Capable phones get the `mobile` tier — the same
+world, simplified — and only weak GPUs, no-WebGL2 and `prefers-reduced-motion` get
+`FlatTier`. The probe records WHY in `GpuProbe.reason`, published to `window.__ailchin.gpu`
+and rendered by `?diag=1`; `?tier=mobile|high|flat` forces a tier. Both exist because a
+phone once showed the flat tier and there was no way to ask it why.
 
 ### The spine — one scalar drives everything
 - `lib/world.ts` — the site plan. **Axes: −Z north, +X east, +Y up, 1 unit = 1 metre.**
@@ -231,6 +234,17 @@ These each cost real time to find. They are not stylistic.
     a filled disc, which is a lid on the only hole the sky comes through, and stop 07 is
     that hole. The galactic plane in `sky.tsx` is also aimed so the band genuinely falls
     inside what the crown frames from the seat — check both if you move either.
+24. **A capability gate may only require capabilities that are USED — and a gate is only
+    tested by a device that FAILS it.** `detectTier` demanded `OES_texture_float_linear`,
+    which nothing here has ever needed: the one float texture in the world is
+    NEAREST-filtered on purpose and hand-bilinear-filtered in the shader *precisely because*
+    float textures are only linearly filterable behind that extension (note 10 above, and
+    the header of `lib/terrain-maps.ts`). The gate therefore required the exact capability
+    the code was written to do without, and every phone whose GPU does not expose it was
+    sent to the flat tier. It shipped, and a real phone caught it — because the desktop that
+    "verified" the mobile tier happened to expose the extension, so the failing branch was
+    never once exercised. **Stub the capability away and re-run before believing any tier
+    decision.** `?tier=` and `?diag=1` exist for exactly this.
 
 ---
 
