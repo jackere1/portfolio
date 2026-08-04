@@ -118,12 +118,14 @@ function SolarPanel() {
       0,
       Math.min(1, (sun.elevationDeg + 9) / 11)
     )
+    // The glass holds the sky, not a lamp. Pushed too far it stops reading as
+    // a reflection and becomes a white slab lying in the grass.
     m.emissive.setRGB(
-      sun.fogColor.r * 1.5,
-      sun.fogColor.g * 1.15,
-      sun.fogColor.b * 0.95
+      sun.fogColor.r * 1.15,
+      sun.fogColor.g * 0.95,
+      sun.fogColor.b * 0.85
     )
-    m.emissiveIntensity = hold * 0.85
+    m.emissiveIntensity = hold * 0.42
   })
 
   const [px, py, pz] = place(4.2, -0.35)

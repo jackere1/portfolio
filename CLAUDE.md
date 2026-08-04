@@ -204,7 +204,11 @@ These each cost real time to find. They are not stylistic.
     ger actually read it, so the brief claimed a seal the render never performed.
 21. **The bagana stand ON the toono ring** (x = ±`toonoRadius`), not inside it. And you must
     never walk between them — the interior camera path passes outside the west one.
-22. **Nothing may fill the toono opening.** The crown glow is a RING at the rim. It was once
+22. **Rotating about +Y takes +x toward −Z.** The door leaves' signs are therefore inverted
+    from the obvious ones; the first pair swung both of them INTO the ger, where they sat
+    invisibly inside the felt. Check any hinge against the axis convention in `lib/world.ts`
+    rather than against intuition.
+23. **Nothing may fill the toono opening.** The crown glow is a RING at the rim. It was once
     a filled disc, which is a lid on the only hole the sky comes through, and stop 07 is
     that hole. The galactic plane in `sky.tsx` is also aimed so the band genuinely falls
     inside what the crown frames from the seat — check both if you move either.

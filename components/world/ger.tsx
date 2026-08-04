@@ -226,10 +226,14 @@ function DoorLeaves({ build }: { build: ReturnType<typeof generateGer> }) {
 
   useFrame(() => {
     writeSunState(sun, journey.t)
-    // Shut is 0; a leaf swung back against the wall is about 105 degrees.
-    const open = (1 - sun.urkh) * 1.83
-    if (left.current) left.current.rotation.y = open
-    if (right.current) right.current.rotation.y = -open
+    // Shut is 0; a leaf swung back flat against the wall is about 80 degrees.
+    // Past that it starts passing THROUGH the cover, which is a wall.
+    const open = (1 - sun.urkh) * 1.4
+    // OUTWARD. Rotating about +Y takes +x toward -z, so the signs here are
+    // inverted from the obvious ones — the previous pair swung both leaves
+    // into the ger, where they sat invisibly inside the felt.
+    if (left.current) left.current.rotation.y = -open
+    if (right.current) right.current.rotation.y = open
   })
 
   return (
