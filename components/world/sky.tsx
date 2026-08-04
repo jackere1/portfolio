@@ -102,18 +102,28 @@ const FRAG = /* glsl */ `
     float dec = asin(clamp(e.y, -1.0, 1.0));
     float ra  = atan(e.z, e.x);
     vec2 uv = vec2(ra / 6.2831853 + 0.5, dec / 3.14159265 + 0.5);
-    return texture2D(uStarMap, uv).rgb;
+
+    // The published map is 1024x512 JPEG and this dome magnifies it hard, so
+    // pushing its gain surfaces the compression blocks as rectangles across
+    // the zenith. Four taps at sub-texel offsets smear those out. It costs
+    // three extra samples and it is the reason the band can be lifted at all.
+    vec2 o = vec2(1.0 / 1024.0, 1.0 / 512.0) * 0.85;
+    vec3 c = texture2D(uStarMap, uv).rgb;
+    c += texture2D(uStarMap, uv + vec2(o.x, 0.0)).rgb;
+    c += texture2D(uStarMap, uv + vec2(0.0, o.y)).rgb;
+    c += texture2D(uStarMap, uv + o).rgb;
+    return c * 0.25;
   }
 
   float stars(vec3 d) {
     vec3 cell = floor(d * 260.0);
     float h = hash13(cell);
     // Sparse: only the brightest few per patch resolve at all.
-    float present = step(0.9965, h);
+    float present = step(0.9948, h);
     float mag = hash13(cell + 7.13);
     vec3 f = fract(d * 260.0) - 0.5;
     float disc = smoothstep(0.32, 0.0, length(f));
-    return present * disc * (0.25 + 2.4 * mag * mag);
+    return present * disc * (0.22 + 2.9 * mag * mag);
   }
 
   void main() {
@@ -245,7 +255,7 @@ const FRAG = /* glsl */ `
       // the band, which lives almost entirely in the dim values. 1.5 keeps its
       // structure while still darkening the empty sky between the stars.
       vec3 sky = starMap(d);
-      col += pow(sky, vec3(1.5)) * uStarOpacity * above * 7.5;
+      col += pow(sky, vec3(1.4)) * uStarOpacity * above * 8.5;
       col += vec3(0.80, 0.83, 0.92) * stars(d) * uStarOpacity * above;
     }
 

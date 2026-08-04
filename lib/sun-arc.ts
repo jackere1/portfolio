@@ -351,8 +351,12 @@ const CLOUD_LIT: readonly Key<Rgb>[] = [
   [0.41, rgb(2.05, 1.42, 0.88)],
   [0.52, rgb(2.0, 1.0, 0.55)],
   [0.62, rgb(1.15, 0.5, 0.34)],
-  [0.76, rgb(0.16, 0.1, 0.11)],
-  [1.0, rgb(0.022, 0.026, 0.05)],
+  // After dark a cloud is not a lit thing, it is a hole in the stars. Left
+  // warm it reads as tan flecks scattered over the sky rather than as
+  // overcast, which is the giveaway at low coverage where the deck breaks into
+  // small pieces.
+  [0.76, rgb(0.06, 0.062, 0.082)],
+  [1.0, rgb(0.014, 0.017, 0.03)],
 ]
 
 /** The shadowed face and the underside. */
@@ -362,8 +366,8 @@ const CLOUD_DARK: readonly Key<Rgb>[] = [
   [0.41, rgb(0.36, 0.35, 0.45)],
   [0.52, rgb(0.24, 0.22, 0.32)],
   [0.62, rgb(0.11, 0.11, 0.19)],
-  [0.76, rgb(0.035, 0.04, 0.08)],
-  [1.0, rgb(0.012, 0.015, 0.032)],
+  [0.76, rgb(0.022, 0.026, 0.05)],
+  [1.0, rgb(0.007, 0.009, 0.019)],
 ]
 
 /**

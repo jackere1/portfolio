@@ -205,11 +205,19 @@ export const STOPS: readonly Stop[] = [
     // the zenith, so the band arcs up out of the SSW horizon. Standing NNE of
     // the camp puts the sealed ger low in that same frame: a small amber shape
     // with its crown covered, under the whole arc of the galaxy.
-    x: 8,
-    z: -20,
+    // The band crosses the horizon at bearings 45 and 225 and arcs over the
+    // zenith between them; the camp sits at 198 from here. Splitting the
+    // difference carries both — the galaxy rising ahead and to the right, the
+    // sealed ger low and to the left.
+    // Sixteen metres out rather than twenty-one. A sealed ger at night is a
+    // very dark object — the only light is what leaks under a shut door — and
+    // at twenty metres it had shrunk to a chimney and a thread of smoke. From
+    // here it subtends about twenty degrees and reads as a house.
+    x: 6,
+    z: -15,
     eye: 1.62,
-    bearing: 198,
-    pitch: 26,
+    bearing: 209,
+    pitch: 27,
     yawRange: 90,
     pitchRange: 38,
   },

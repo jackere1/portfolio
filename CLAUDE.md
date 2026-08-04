@@ -316,6 +316,12 @@ because that one is in *galactic* coordinates — rotating it until the band loo
 aesthetic placement dressed up as an astronomical one, which this site cannot do. **Its
 attribution must ship**; see `public/sky/CREDITS.md`.
 
+The published map is only 1024x512 JPEG and this dome magnifies it hard, so its gain cannot be
+pushed far before the compression blocks surface as rectangles across the zenith. It is sampled
+with four sub-texel taps to smear those out, and the crisp point stars are drawn procedurally
+on top — the texture carries the diffuse BAND, which is the one thing procedural noise was bad
+at. If a larger map ever becomes fetchable, that is the upgrade.
+
 **The host** (`components/world/people.tsx`) appears twice, and both are the culture's own
 grammar. On arrival, someone steps out of the door — that is the permission, because you call
 *нохой хор*, hold the dog, and you WAIT; you do not approach until the household receives

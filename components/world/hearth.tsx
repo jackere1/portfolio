@@ -146,7 +146,7 @@ export function Hearth({
       const m = crownRef.current.material as THREE.MeshStandardMaterial
       m.emissiveIntensity = night * 1.05 * f
     }
-    if (spillRef.current) spillRef.current.intensity = night * 1.5 * f
+    if (spillRef.current) spillRef.current.intensity = night * 3.2 * f
     // Fades as the urkh closes over it, which is the physical cause.
     if (crownLightRef.current) {
       crownLightRef.current.intensity = (1 - sun.urkh) * 2.4
@@ -158,7 +158,7 @@ export function Hearth({
     for (const s of seamRefs.current) {
       if (!s) continue
       const m = s.material as THREE.MeshStandardMaterial
-      m.emissiveIntensity = night * 3.6 * f
+      m.emissiveIntensity = night * 5.2 * f
     }
     if (smokeRef.current) {
       smokeRef.current.uniforms.uTime.value = clock.current
@@ -228,7 +228,7 @@ export function Hearth({
         ref={spillRef}
         position={[0, 0.18, 3.0]}
         color="#ff9a44"
-        distance={7}
+        distance={16}
         decay={2}
         intensity={0}
       />
