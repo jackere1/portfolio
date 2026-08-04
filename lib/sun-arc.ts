@@ -44,6 +44,13 @@ export interface SunState {
   haze: number
   mieGain: number
 
+  /** Cloud deck: how much sky it covers, and the two colours its lit and
+   *  shadowed faces take. Clouds are the single largest thing in a Mongolian
+   *  sky and they are the last surface in the world to keep the sun. */
+  cloudCover: number
+  cloudLit: Rgb
+  cloudDark: Rgb
+
   /** The urkh — the felt flap over the crown. 0 folded back, 1 drawn across.
    *  It is drawn as it gets dark, which is also WHY the finale is outdoors:
    *  seeing stars through an uncovered toono reads as poverty. */
@@ -233,9 +240,13 @@ const HORIZON: readonly Key<Rgb>[] = [
 const SKY_COLOR: readonly Key<Rgb>[] = [
   [0.0, rgb(1.18, 1.49, 2.0)],
   [0.17, rgb(0.88, 1.11, 1.52)],
-  [0.29, rgb(0.6, 0.74, 1.03)],
-  [0.41, rgb(0.42, 0.5, 0.68)],
-  [0.517, rgb(0.3, 0.38, 0.6)],
+  [0.29, rgb(0.66, 0.78, 1.02)],
+  // Golden hour's colour does NOT come from the direct sun: at +3 degrees a
+  // flat ground receives almost nothing from it, and diffuse sky genuinely
+  // dominates. It comes from the fact that the whole SKY has gone warm, and
+  // the hemisphere light is what carries that onto the ground.
+  [0.41, rgb(0.88, 0.66, 0.46)],
+  [0.517, rgb(0.62, 0.42, 0.4)],
   [0.574, rgb(0.2, 0.29, 0.53)],
   [0.664, rgb(0.12, 0.19, 0.42)],
   [0.76, rgb(0.06, 0.11, 0.28)],
@@ -246,7 +257,7 @@ const SKY_COLOR: readonly Key<Rgb>[] = [
 const GROUND_COLOR: readonly Key<Rgb>[] = [
   [0.0, rgb(1.05, 0.86, 0.52)],
   [0.29, rgb(0.6, 0.48, 0.28)],
-  [0.41, rgb(0.36, 0.28, 0.16)],
+  [0.41, rgb(0.5, 0.33, 0.16)],
   [0.574, rgb(0.19, 0.16, 0.12)],
   [0.76, rgb(0.07, 0.07, 0.08)],
   [1.0, rgb(0.03, 0.032, 0.042)],
@@ -298,8 +309,8 @@ const FOG_DENSITY: readonly Key<number>[] = [
 const EXPOSURE: readonly Key<number>[] = [
   [0.0, 0.42],
   [0.17, 0.5],
-  [0.29, 0.62],
-  [0.41, 0.88],
+  [0.29, 0.68],
+  [0.41, 1.08],
   [0.574, 0.84],
   [0.664, 0.82],
   [0.76, 0.66],
@@ -318,6 +329,41 @@ const MIE_GAIN: readonly Key<number>[] = [
   [0.0, 0.9],
   [0.29, 1.5],
   [0.456, 2.4],
+]
+
+/** Fair-weather cumulus over a summer basin: broken, not overcast. */
+const CLOUD_COVER: readonly Key<number>[] = [
+  [0.0, 0.44],
+  [0.29, 0.47],
+  [0.52, 0.5],
+  [0.72, 0.34],
+  // The finale wants a CLEAR night. A Bortle-1 sky with the Milky Way in it is
+  // the last image of the piece, and it should not be competing with a deck.
+  [1.0, 0.14],
+]
+
+/** The lit face. Clouds are the LAST thing the sun touches — they still burn
+ *  gold well after the ground has gone blue, which is most of why a steppe
+ *  sunset looks the way it does. */
+const CLOUD_LIT: readonly Key<Rgb>[] = [
+  [0.0, rgb(2.4, 2.42, 2.45)],
+  [0.29, rgb(2.3, 2.1, 1.85)],
+  [0.41, rgb(2.05, 1.42, 0.88)],
+  [0.52, rgb(2.0, 1.0, 0.55)],
+  [0.62, rgb(1.15, 0.5, 0.34)],
+  [0.76, rgb(0.16, 0.1, 0.11)],
+  [1.0, rgb(0.022, 0.026, 0.05)],
+]
+
+/** The shadowed face and the underside. */
+const CLOUD_DARK: readonly Key<Rgb>[] = [
+  [0.0, rgb(0.68, 0.74, 0.9)],
+  [0.29, rgb(0.5, 0.53, 0.66)],
+  [0.41, rgb(0.36, 0.35, 0.45)],
+  [0.52, rgb(0.24, 0.22, 0.32)],
+  [0.62, rgb(0.11, 0.11, 0.19)],
+  [0.76, rgb(0.035, 0.04, 0.08)],
+  [1.0, rgb(0.012, 0.015, 0.032)],
 ]
 
 /**
@@ -355,6 +401,9 @@ export function writeSunState(out: SunState, t: number): void {
   sampleColor(SUN_DISC, p, out.sunDisc)
   out.haze = sampleNumber(HAZE, p)
   out.mieGain = sampleNumber(MIE_GAIN, p)
+  out.cloudCover = sampleNumber(CLOUD_COVER, p)
+  sampleColor(CLOUD_LIT, p, out.cloudLit)
+  sampleColor(CLOUD_DARK, p, out.cloudDark)
 
   // The ger seals itself as the cold comes down: the crown is covered and the
   // wall skirt is rolled back to the ground, both on sun elevation so they can
@@ -393,6 +442,9 @@ export function createSunState(): SunState {
     sunDisc: rgb(0, 0, 0),
     haze: 0.115,
     mieGain: 0.9,
+    cloudCover: 0.44,
+    cloudLit: rgb(0, 0, 0),
+    cloudDark: rgb(0, 0, 0),
     urkh: 0,
     khayaaRoll: 0.24,
     exposure: 1,

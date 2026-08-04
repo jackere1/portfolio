@@ -5,6 +5,7 @@ import { useFrame, useThree } from "@react-three/fiber"
 import * as THREE from "three"
 import { journey } from "@/hooks/use-journey"
 import { createSunState, writeSunState } from "@/lib/sun-arc"
+import { useReducedMotion } from "@/hooks/use-reduced-motion"
 import { getStarMap, starMapRotation } from "@/lib/starmap"
 
 // The twilight dome.
@@ -52,6 +53,10 @@ const FRAG = /* glsl */ `
   uniform vec3  uSunDisc;   // absolute radiance of the disc, keyframed
   uniform float uHaze;      // vertical Mie optical depth
   uniform float uMieGain;   // aureole strength
+  uniform float uCloudCover;
+  uniform vec3  uCloudLit;
+  uniform vec3  uCloudDark;
+  uniform float uCloudTime;
 
   // Vertical Rayleigh optical depth for an observer at ~1400 m. The steppe
   // sits high, which is exactly why its zenith is deeper than a sea-level one.
@@ -84,6 +89,35 @@ const FRAG = /* glsl */ `
       mix(mix(n001, n101, f.x), mix(n011, n111, f.x), f.y),
       f.z
     );
+  }
+
+  // --- the cloud deck ------------------------------------------------------
+  float hash12(vec2 p) {
+    vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+  }
+
+  float vnoise2(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(
+      mix(hash12(i), hash12(i + vec2(1.0, 0.0)), f.x),
+      mix(hash12(i + vec2(0.0, 1.0)), hash12(i + vec2(1.0, 1.0)), f.x),
+      f.y
+    );
+  }
+
+  float fbm2(vec2 p) {
+    float v = 0.0;
+    float a = 0.5;
+    for (int i = 0; i < 5; i++) {
+      v += a * vnoise2(p);
+      p = p * 2.03 + vec2(17.3, -9.1);
+      a *= 0.5;
+    }
+    return v;
   }
 
   // The Milky Way now comes from the real map rather than from noise. A 1k
@@ -178,6 +212,52 @@ const FRAG = /* glsl */ `
     float belt = exp(-pow((h - shadowTop) / 0.055, 2.0));
     col += vec3(0.72, 0.30, 0.26) * belt * anti * beltLife * 0.9;
 
+    // --- clouds -----------------------------------------------------------
+    // Projected onto a flat deck rather than raymarched: at this scale the
+    // difference is invisible and the cost is a fbm instead of a loop. What
+    // matters for realism is not the volume, it is that the deck CONVERGES at
+    // the horizon (so it reads as a ceiling over a huge plain, which is what
+    // a basin sky actually looks like) and that the lit faces keep the sun
+    // long after the ground has lost it.
+    if (h > 0.015) {
+      // Scale matters more than anything else here. The deck coordinate is
+      // where the view ray meets a flat ceiling; multiplying it sets how big a
+      // cloud is against that ceiling. Too small a factor and the whole
+      // visible sky samples one value of the field, which is either total
+      // overcast or nothing at all — there is no cloud, only a switch.
+      vec2 deck = d.xz / max(h, 0.015);
+      vec2 cp = deck * 2.1 + uCloudTime * vec2(0.016, 0.007);
+
+      float n = fbm2(cp);
+      // A second, much finer octave breaks the edges up. Without it the field
+      // is all soft blobs and the deck reads as painted fog.
+      n += (fbm2(cp * 4.3) - 0.5) * 0.16;
+
+      float edge = 1.0 - uCloudCover;
+      // THICKNESS, not just presence. A cumulus is bright where it is deep and
+      // dark and translucent where it thins to nothing, and carrying that one
+      // extra number is most of the difference between cloud and grey paint.
+      float thick = clamp((n - edge) / 0.30, 0.0, 1.0);
+      float cov = smoothstep(0.0, 0.20, thick);
+
+      // Thin toward the horizon: perspective piles the deck up there, and the
+      // haze eats it.
+      cov *= smoothstep(0.015, 0.19, h);
+      // And thin again very high, so the zenith keeps some open blue.
+      cov *= 1.0 - smoothstep(0.72, 1.0, h) * 0.55;
+
+      // Lighting. Forward scatter toward the sun gives the silver lining;
+      // the noise field itself stands in for which faces are turned away.
+      float toSun = max(dot(d, normalize(uSunDir)), 0.0);
+      // The silver lining: forward scatter through a thin edge, so it is
+      // strongest exactly where the cloud is thinnest.
+      float rim = pow(toSun, 7.0) * (1.0 - thick * 0.55);
+      float shade = pow(thick, 0.62);
+      vec3 cloud = mix(uCloudDark, uCloudLit, clamp(shade * 0.9 + rim * 1.1, 0.0, 1.0));
+
+      col = mix(col, cloud, clamp(cov, 0.0, 1.0));
+    }
+
     // --- the sun itself ---------------------------------------------------
     // Angular radius 0.265 degrees, which is its real one — the disc has no
     // business being bigger than the sky it sits in. It is left far above 1.0
@@ -214,6 +294,8 @@ export function Sky() {
   const meshRef = useRef<THREE.Mesh>(null)
   const camera = useThree((s) => s.camera)
   const sun = useMemo(() => createSunState(), [])
+  const reduced = useReducedMotion()
+  const clock = useRef(0)
 
   const uniforms = useMemo(
     () => ({
@@ -227,11 +309,15 @@ export function Sky() {
       uStarRot: { value: starMapRotation() },
       uHaze: { value: 0.115 },
       uMieGain: { value: 0.9 },
+      uCloudCover: { value: 0.44 },
+      uCloudLit: { value: new THREE.Color(2.4, 2.42, 2.45) },
+      uCloudDark: { value: new THREE.Color(0.68, 0.74, 0.9) },
+      uCloudTime: { value: 0 },
     }),
     []
   )
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     writeSunState(sun, journey.t)
     const u = uniforms
     u.uSunDir.value.set(sun.dirX, sun.dirY, sun.dirZ)
@@ -246,6 +332,13 @@ export function Sky() {
     u.uSunDisc.value.setRGB(sun.sunDisc.r, sun.sunDisc.g, sun.sunDisc.b)
     u.uHaze.value = sun.haze
     u.uMieGain.value = sun.mieGain
+    u.uCloudCover.value = sun.cloudCover
+    u.uCloudLit.value.setRGB(sun.cloudLit.r, sun.cloudLit.g, sun.cloudLit.b)
+    u.uCloudDark.value.setRGB(sun.cloudDark.r, sun.cloudDark.g, sun.cloudDark.b)
+    // Clouds drift. Slowly — this is ambient motion, not journey motion, and
+    // it is the one thing in the sky allowed to read a clock.
+    if (!reduced) clock.current += Math.min(delta, 1 / 20)
+    u.uCloudTime.value = clock.current
 
     // The dome is a backdrop at infinity: it follows the camera's position but
     // never its rotation.

@@ -96,7 +96,7 @@ expected to print **zero** errors — not "fewer". If it prints any, you added t
   `DataTexture`. Sampled with NEAREST and **bilinear-filtered by hand in the shader**: float
   textures are only linearly filterable behind an extension, and a silent fallback to point
   sampling steps the grass base height by a third of a metre.
-- `components/world/sky.tsx` — the authored twilight dome (see below).
+- `components/world/sky.tsx` — the authored twilight dome and the cloud deck (see below).
 - `components/world/terrain.tsx` — the hero patch plus a square ANNULUS skirt that begins
   exactly where it ends. They share a height function, a colouring rule and world-space UVs,
   and they do not overlap at all — see note 11 below for why that matters.
@@ -167,11 +167,21 @@ These each cost real time to find. They are not stylistic.
     intensity on top dims everything twice and turns stops 03–05 into black silhouettes
     with every prop invisible. The intensity RISES as the sun crosses the horizon, because
     that is the moment the sky stops being a fill light and becomes the key light.
-15. **The crown is the SUN and its wood is red-orange, never blue.** Mongolian ger woodwork is
+15. **The cloud deck is projected onto a flat ceiling, not raymarched.** At this scale the
+    difference is invisible and the cost is one fbm instead of a loop. Two things make it read:
+    the deck must CONVERGE at the horizon, which is what a ceiling over a huge plain looks
+    like, and it must carry THICKNESS — bright where it is deep, dark and translucent where it
+    thins — because presence alone is grey paint. Watch the projection scale: too small a
+    factor and the entire visible sky samples one value of the field, so there is no cloud,
+    only a switch between overcast and nothing.
+16. **Golden hour's colour is in the HEMISPHERE light, not the sun.** At +3 degrees a flat
+    ground receives almost nothing from a direct sun and diffuse sky genuinely dominates —
+    which is correct physics and looked stone cold until `SKY_COLOR` itself went warm there.
+17. **The crown is the SUN and its wood is red-orange, never blue.** Mongolian ger woodwork is
     red and reddish-yellow; the toono in particular is coloured for the sun, with the uni as
     its rays. It should be the warmest wood in the ger. (An earlier version painted the spokes
     khadag blue, which inverted the symbolism.)
-16. **The ger opens and closes across the day, and all three parts must actually be wired.**
+18. **The ger opens and closes across the day, and all three parts must actually be wired.**
     The urkh is folded back over the north roof slope by day and drawn across the crown after
     dark; the khayaa (the wall skirt) is rolled UP through the heat — which is why the orange
     lattice shows at the base all afternoon — and rolled DOWN when the cold comes; the door
@@ -180,9 +190,9 @@ These each cost real time to find. They are not stylistic.
     and stop 08 walks back out into that. **Watch for half-wired versions of this**: the
     khayaa value existed in the sun state and in this file for a while before anything in the
     ger actually read it, so the brief claimed a seal the render never performed.
-17. **The bagana stand ON the toono ring** (x = ±`toonoRadius`), not inside it. And you must
+19. **The bagana stand ON the toono ring** (x = ±`toonoRadius`), not inside it. And you must
     never walk between them — the interior camera path passes outside the west one.
-18. **Nothing may fill the toono opening.** The crown glow is a RING at the rim. It was once
+20. **Nothing may fill the toono opening.** The crown glow is a RING at the rim. It was once
     a filled disc, which is a lid on the only hole the sky comes through, and stop 07 is
     that hole. The galactic plane in `sky.tsx` is also aimed so the band genuinely falls
     inside what the crown frames from the seat — check both if you move either.
